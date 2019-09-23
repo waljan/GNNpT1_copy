@@ -1,8 +1,6 @@
-#import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import numpy as np
-import re
-import networkx as nx
+
 
 
 def basic_info(filename):
@@ -57,18 +55,22 @@ def get_node_features(filename):
 
     return (graph_attributes)
 
-    # # iterate over the nodes in the graph
-    # for node in root.iter("node"):
-    #     # iterate over the features of the node
-    #     for feature in node:
-    #         # print the name of the feature
-    #         print(feature.attrib, end=": ")
-    #         # print the value of the feature
-    #         for value in feature:
-    #             print(value.text)
-    #     print("---------------------------------")
+def get_edges(filename):
+    """
+    This functions returns a list of lists containing the edges
+    :param filename: gxl file that stores a graph
+    :return: list of lists, each internal list contains the starting and endpoints of an edge
+    """
+    # initialize tree
+    tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    root = tree.getroot()
 
+    # get the start and end points of every edge and store them in a list of lists
+    start_points = [int("".join(filter(str.isdigit, edge.attrib["_from"]))) for edge in root.iter("edge")]
+    end_points = [int("".join(filter(str.isdigit, edge.attrib["_to"]))) for edge in root.iter("edge")]
+    edge_list = [[start_points[i], end_points[i]] for i in range(len(start_points))]
 
+    return (edge_list)
 
 def adj_from_gxl(filename):
     """
@@ -110,6 +112,5 @@ def main(filename):
 
 
 if __name__ == "__main__":
-
     filename = "img0_0_normal.gxl"
     main(filename)
