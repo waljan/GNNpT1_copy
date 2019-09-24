@@ -1,6 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from scipy.ndimage import imread
+import numpy as np
+from PIL import Image
 import read_gxl as readgxl
 
 
@@ -11,7 +12,8 @@ def plot_Graph(filename):
     :return: plots the graph on top of the image
     """
     #load the image
-    img=imread("dataset/img0/img0_0_normal/img0_0_normal-image.jpg") #TODO this path should automatically be chosen according to the input filename
+    img=Image.open("dataset/img0/img0_0_normal/img0_0_normal-image.jpg") #TODO this path should automatically be chosen according to the input filename
+    img = np.asarray(img)
     # get the attributes of every node
     attr_dic =  readgxl.get_node_features(filename)
     # get the coordinates of every node
