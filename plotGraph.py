@@ -12,7 +12,11 @@ def plot_Graph(filename):
     :return: plots the graph on top of the image
     """
     #load the image
-    img=Image.open("dataset/img0/img0_0_normal/img0_0_normal-image.jpg") #TODO this path should automatically be chosen according to the input filename
+    p = filename.split("_")
+    img_path = "dataset/" + p[0] + "/" + filename.replace(".gxl","") + "/" + filename.replace(".gxl","-image.jpg")
+    # img=Image.open("dataset/img0/img0_0_normal/img0_0_normal-image.jpg")
+    img=Image.open(img_path)
+
     img = np.asarray(img)
     # get the attributes of every node
     attr_dic =  readgxl.get_node_features(filename)
@@ -32,10 +36,20 @@ def plot_Graph(filename):
     #plot the graph on top of the image
     plt.figure(1)
     plt.imshow(img)
-    nx.draw_networkx(G, coordinates)
+    plt.title(filename.replace(".gxl",""))
+    nx.draw_networkx(G, coordinates, with_labels=False, node_shape=".", node_color="orangered", width=1, edge_color="orange" )
     plt.show()
 
 
 if __name__ == "__main__":
     filename = "img0_0_normal.gxl"
     plot_Graph(filename)
+    filename = "img0_12_abnormal.gxl"
+    plot_Graph(filename)
+    filename = "img0_13_abnormal.gxl"
+    plot_Graph(filename)
+    filename = "img0_14_abnormal.gxl"
+    plot_Graph(filename)
+    filename = "img0_15_abnormal.gxl"
+    plot_Graph(filename)
+
