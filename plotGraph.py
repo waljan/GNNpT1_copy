@@ -24,8 +24,8 @@ def plot_Graph(filename):
     coordinates = [[attr_dic[node][4], attr_dic[node][5]] for node in attr_dic]
     # scale the node coordinates to the image size
     for i in range(len(coordinates)):
-        coordinates[i][0]*=img.shape[1]
-        coordinates[i][1]*=img.shape[0]
+        coordinates[i][0]*=(img.shape[1]-1)
+        coordinates[i][1]*=(img.shape[0]-1)
     # get the edges of the graph
     edge_list = readgxl.get_edges(filename)
 
@@ -37,7 +37,7 @@ def plot_Graph(filename):
     plt.figure(1)
     plt.imshow(img)
     plt.title(filename.replace(".gxl",""))
-    nx.draw_networkx(G, coordinates, with_labels=False, node_shape=".", node_color="orangered", width=1, edge_color="orange" )
+    nx.draw_networkx(G, coordinates, with_labels=False, node_shape=".", node_color="orangered", node_size=100, width=1, edge_color="orange" )
     plt.show()
 
 
@@ -46,10 +46,10 @@ if __name__ == "__main__":
     plot_Graph(filename)
     filename = "img0_12_abnormal.gxl"
     plot_Graph(filename)
-    filename = "img0_13_abnormal.gxl"
-    plot_Graph(filename)
-    filename = "img0_14_abnormal.gxl"
-    plot_Graph(filename)
-    filename = "img0_15_abnormal.gxl"
-    plot_Graph(filename)
+    # filename = "img0_13_abnormal.gxl"
+    # plot_Graph(filename)
+    # filename = "img0_14_abnormal.gxl"
+    # plot_Graph(filename)
+    # filename = "img0_15_abnormal.gxl"
+    # plot_Graph(filename)
 
