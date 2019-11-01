@@ -101,6 +101,43 @@ def adj_from_gxl(filename):
     return (A)
 
 
+import torch
+from torch_geometric.data import Data
+
+
+def get_graph(filename):
+    """
+    TODO
+    """
+    # initialize tree
+    tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    root = tree.getroot()
+
+    # get the start and end points of every edge and store them in a list of lists
+    start_points = [int("".join(filter(str.isdigit, edge.attrib["_from"]))) for edge in root.iter("edge")]
+    end_points = [int("".join(filter(str.isdigit, edge.attrib["_to"]))) for edge in root.iter("edge")]
+    edge_list = [[start_points[i], end_points[i]] for i in range(len(start_points))]
+
+    # create a tensor needed to construct the graph
+    edge_index = torch.tensor(edge_list, dtype=torch.long)
+
+    # initialize the list
+    all_node_features = []
+    # iterate over every node
+    for node in root.iter("node"):
+        # get the feature vector of every node
+        feature_vec = [float(value.text) for feature in node for value in feature]
+        # and append it to the list
+        all_node_features.append(feature_vec)
+
+    # create a tensor needed to construct the graph
+    x = torch.tensor(all_node_features, dtype=torch.float)
+    # construct the graph
+    graph = Data(x=x, edge_index=edge_index.t().contiguous())
+
+    return (graph)
+
+
 def main(filename):
     basic_info(filename)
     A = (adj_from_gxl(filename))
