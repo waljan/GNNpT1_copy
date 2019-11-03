@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 import numpy as np
 
-
+# conda activate PyG373Msc
 
 def basic_info(filename):
     """
@@ -15,13 +15,16 @@ def basic_info(filename):
     root = tree.getroot()
 
     # iterate over the nodes in the graph
+    num_n = 0
     for node in root.iter("node"):
-
+        num_n += 1
         # print the node label
         print ("Node:", node.attrib)
 
         # iterate over the features of the node
+        num_f_perNode = 0
         for feature in node:
+            num_f_perNode += 1
             # print the name of the feature
             print(feature.attrib, end=": ")
             # print the value of the feature
@@ -29,8 +32,11 @@ def basic_info(filename):
                 print(value.text)
         print("---------------------------------")
 
+    num_e = 0
     for edge in root.iter("edge"):
+        num_e += 1
         print("Edge:", (edge.attrib))
+    print("Graph", filename + ":\tnumber of nodes:", num_n, "\tnumber of node features:", num_f_perNode, "\tnumber of edges:", num_e )
 
 
 def get_node_features(filename):
@@ -107,7 +113,9 @@ from torch_geometric.data import Data
 
 def get_graph(filename):
     """
-    TODO
+    this function takes a gxl-file as input and creates a graph as it is used in pytorch Geometric
+    :param filename: gxl file that stores a graph
+    :return python object modeling a single graph with various attributes
     """
     # initialize tree
     tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
@@ -132,8 +140,18 @@ def get_graph(filename):
 
     # create a tensor needed to construct the graph
     x = torch.tensor(all_node_features, dtype=torch.float)
+
+    if "normal" in filename:
+        graph_class = 0
+    elif "abnormal" in filename:
+        graph_class = 1
+    else:
+        print("the filename has not the correct format")
+    y = torch.tensor([graph_class], dtype=torch.float)
+
     # construct the graph
     graph = Data(x=x, edge_index=edge_index.t().contiguous())
+
 
     return (graph)
 
@@ -146,6 +164,8 @@ def main(filename):
     for key, value in dic.items():
         print ("Node" + key + ":", value)
         break
+    g = get_graph(filename)
+    print(g)
 
 
 if __name__ == "__main__":
