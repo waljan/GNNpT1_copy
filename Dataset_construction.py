@@ -99,23 +99,29 @@ class DataConstructor():
 
     def get_data_list(self, k=0):
         """
-        this function creates data objects
-        :param k:
-        :return:
+        this function creates lists of data objects separated into train val and test
+        :param k: k can take values from 0 to 3 and defines which datasplit in the 4-fold cross validation is used
+        :return: lists of data objects for train val and test
         """
-        # create a list of data objcts
-        data_split = self.split(k)
+
+        data_split = self.split(k) #get dictionary that tells how to split the data into train val and test
+
+        # initialize list
         train_data_list = []
         test_data_list = []
         val_data_list = []
 
         pattern = "_"
 
+        # iterate over every filename
         for filename in self.raw_file_names():
+            # create the data object tepresenting the graph stored in the file
             data = self.get_graph(filename)
-            img = re.split(pattern, filename)[0]
-            split = data_split[img][0]
-            #     print(split)
+
+            img = re.split(pattern, filename)[0] # get the image from which this graph was sampled
+            split = data_split[img][0]  # determine wheter this graph belongs to train val or test
+
+            # add the data object for the graph to the corresponding list
             if split == "test":
                 test_data_list.append(data)
             elif split == "val":
