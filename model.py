@@ -9,9 +9,9 @@ class GCN(torch.nn.Module):
     Graph Convolutional Neural Network similar to the one introduced by Kipf and Welling.
     https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gcn.py
     """
-    def __init__(self, num_layers, hidden):
+    def __init__(self, num_layers, num_input_features, hidden):
         super(GCN, self).__init__()
-        self.conv1 = GCNConv(6, hidden) #GCNconv layer 6 feature-channels as input and 6 as output
+        self.conv1 = GCNConv(num_input_features, hidden) #GCNconv layer 6 feature-channels as input and 6 as output
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
             self.convs.append(GCNConv(hidden, hidden))  # remaining GCNconv layers
