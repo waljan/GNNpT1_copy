@@ -1,4 +1,4 @@
-from model import GCN, GCNWithJK
+from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK
 from Dataset_construction import DataConstructor
 import torch
 from torch_geometric.data import DataLoader
@@ -80,6 +80,7 @@ def plot_train_test(train_accs, test_accs):
     plt.legend()
     plt.show()
 
+
 def cross_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m):
         # print("load data")
         raw_data = DataConstructor()
@@ -94,12 +95,20 @@ def cross_val(batch_size, num_epochs, num_layers, num_input_features, hidden, de
             val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
 
             # initialize model
+            print("initialize model", m)
             if m == "GCN":
                 model = GCN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(
                     device)  # initialize the model
             elif m == "GCNWithJK":
                 model = GCNWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden,
                                   mode="cat").to(device)  # initialize the model
+            elif m == "GraphSAGE":
+                model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(
+                    device)
+            elif m == "GraphSAGEWithJK":
+                model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden,
+                                        mode="cat").to(device)
+
             optimizer = torch.optim.Adam(model.parameters(), lr=lr) # define the optimizer
             scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
             crit = torch.nn.MSELoss()   # define the loss function
@@ -184,12 +193,19 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
         train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
         test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=True)
 
-        print("initialize model")
+        print("initialize model", m)
 
         if m == "GCN":
             model = GCN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)  # initialize the model
         elif m == "GCNWithJK":
             model = GCNWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)  # initialize the model
+        elif m == "GraphSAGE":
+            model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
+        elif m == "GraphSAGEWithJK":
+            model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
+
+
+
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # define the optimizer
         scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
         crit = torch.nn.MSELoss()  # define the loss function
@@ -232,11 +248,17 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
         val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
 
-        print("initialize model")
+        print("initialize model", m)
         if m == "GCN":
             model = GCN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)  # initialize the model
         elif m == "GCNWithJK":
             model = GCNWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)  # initialize the model
+        elif m == "GraphSAGE":
+            model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
+        elif m == "GraphSAGEWithJK":
+            model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
+
+
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # define the optimizer
         scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
         crit = torch.nn.MSELoss()  # define the loss function
@@ -288,8 +310,11 @@ if __name__ == "__main__":
     step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*gamma
     device = torch.device("cuda")
 
+    # choose one of the models by commenting out the others
     m = "GCNWithJK"
     m = "GCN"
+    m = "GraphSAGE"
+    m = "GraphSAGEWithJK"
 
 
 
