@@ -93,6 +93,7 @@ class GCNWithJK(torch.nn.Module):
 
 
 class GraphSAGE(torch.nn.Module):
+    # https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/graph_sage.py
     def __init__(self, num_input_features, num_layers, hidden):
         super(GraphSAGE, self).__init__()
         self.conv1 = SAGEConv(num_input_features, hidden)
@@ -125,6 +126,7 @@ class GraphSAGE(torch.nn.Module):
 
 
 class GraphSAGEWithJK(torch.nn.Module):
+    # https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/graph_sage.py
     def __init__(self, num_input_features, num_layers, hidden, mode='cat'):
         super(GraphSAGEWithJK, self).__init__()
         self.conv1 = SAGEConv(num_input_features, hidden)
