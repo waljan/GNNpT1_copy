@@ -1,4 +1,4 @@
-# pT1 Gland Graph Dataset (GG-pT1)
+### pT1 Gland Graph Dataset (GG-pT1)
 This repo contains the intestinal gland segmentation dataset from pT1 cancer patients. 
 It includes:
 
