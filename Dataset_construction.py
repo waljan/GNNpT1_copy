@@ -57,7 +57,6 @@ class DataConstructor():
 
         return (graph)
 
-
     def split(self, k):
         """
         This function splits the pt1 graph data set into train validation and test
@@ -83,7 +82,6 @@ class DataConstructor():
                 else:
                     dic[row[0]] = [row[k+1]]
         return dic
-
 
     # get a list of all filenames
     def raw_file_names(self):
@@ -132,7 +130,6 @@ class DataConstructor():
                 train_data_list.append(data)
 
         return train_data_list, val_data_list, test_data_list
-#
 
 
 # class GraphDataset(InMemoryDataset):
