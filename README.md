@@ -8,12 +8,11 @@ The models are applied on the publicly available [pT1 Gland Graph Dataset (GG-pT
 So far, the following models are implemented:
 
 - **GCN**: uses the Graph convolution operator introduced by [Kipf & Welling 2016](https://arxiv.org/abs/1609.02907).
-
     - **GCNWithJK**: uses the JumpingKnowledge layer aggregation module introduced by [Xu et al.](https://arxiv.org/abs/1806.03536)
 
 
-- **GraphSAGE**: uses the GraphSAGE operator introduced by [Hamilton et al.](https://arxiv.org/abs/1706.02216)
 
+- **GraphSAGE**: uses the GraphSAGE operator introduced by [Hamilton et al.](https://arxiv.org/abs/1706.02216)
     - **GraphSAGEWithJK**: uses the JumpingKnowledge layer aggregation module introduced by [Xu et al.](https://arxiv.org/abs/1806.03536)
 
 
