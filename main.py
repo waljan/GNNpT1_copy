@@ -318,7 +318,7 @@ if __name__ == "__main__":
 
 
 
-
+    # grid search for Hyperparameters
     # timestr = time.strftime(("%Y%m%d_%H%M%S"))
     # filename = "Results/Val/" + m + timestr + ".csv"
     # header = ["Model", "batch_size", "num_epochs", "num_layers", "num_input_features", "hidden", "lr", "step_size", "lr_decay", "optimizer", "avg_val"]
