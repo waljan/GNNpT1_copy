@@ -69,20 +69,12 @@ git clone https://github.com/waljan/GNNpT1.git
 ```
 
 
-create a virtual environment:
+create a virtual environment from the requirement.yml file:
 ```
-conda create -n GNNpT1env python=3.7.3
-conda activate GNNpT1env
+conda env create -f requirements.yml
+conda activate GNNpT1Env
 ```
 
-install the packages required for this repo:
-```
-# go to the directory that contains the requirements.txt
-cd ...
-
-# install the requirements to your GNNpT1env (the environment needs to be activated)
-pip install -r requirements.txt
-```
 
 
 To remove the the conda environment run the following code:
