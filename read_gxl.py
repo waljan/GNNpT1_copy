@@ -141,16 +141,17 @@ def get_graph(filename):
     # create a tensor needed to construct the graph
     x = torch.tensor(all_node_features, dtype=torch.float)
 
-    if "normal" in filename:
-        graph_class = 0
-    elif "abnormal" in filename:
+    # add graph label
+    if "abnormal" in filename:
         graph_class = 1
+    elif "normal" in filename:
+        graph_class = 0
     else:
         print("the filename has not the correct format")
     y = torch.tensor([graph_class], dtype=torch.float)
 
     # construct the graph
-    graph = Data(x=x, edge_index=edge_index.t().contiguous())
+    graph = Data(x=x, y=y, edge_index=edge_index.t().contiguous())
 
 
     return (graph)
@@ -166,6 +167,7 @@ def main(filename):
         break
     g = get_graph(filename)
     print(g)
+    print(g.y)
 
 
 if __name__ == "__main__":
