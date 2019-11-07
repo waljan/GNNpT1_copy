@@ -56,3 +56,40 @@ If you want to cite us please use:
 
 This work is part of a larger project. Find out more [here](https://icosys.ch/bts-project).
 
+
+
+## Requirements:
+clone the repository using the terminal:
+```
+# first change to the local directory where you want to clone your repository
+cd ...
+
+# clone the repo
+git clone https://github.com/waljan/GNNpT1.git
+```
+
+
+create a virtual environment:
+```
+conda create -n GNNpT1env python=3.7.3
+conda activate GNNpT1env
+```
+
+install the packages required for this repo:
+```
+# go to the directory that contains the requirements.txt
+cd ...
+
+# install the requirements to your GNNpT1env (the environment needs to be activated)
+pip install -r requirements.txt
+```
+
+
+To remove the the conda environment run the following code:
+```
+# first deactivate the conda environment that you want to remove
+conda deactivate
+
+# remove the GNNpT1env environment
+conda env remove -n GNNpT1env
+```
