@@ -33,23 +33,41 @@ def plot_Graph(filename):
     G = nx.Graph()
     G.add_edges_from(edge_list)
 
+
+    nx.draw(G, coordinates, with_labels=False, node_shape=".", node_color="orangered", node_size=100, width=2, edge_color="orange" )
+    # plt.show()
+    plt.savefig("../../images/" + filename.replace(".gxl","-Graph.png"), format="PNG")
+    plt.show()
+
+    # plt.imshow(img)
+    # # plt.title(filename)
+    # plt.axis("off")
+    # plt.show()
+
+
     #plot the graph on top of the image
     plt.figure(1)
     plt.imshow(img)
-    plt.title(filename.replace(".gxl",""))
-    nx.draw_networkx(G, coordinates, with_labels=False, node_shape=".", node_color="orangered", node_size=100, width=1, edge_color="orange" )
+    # plt.title(filename.replace(".gxl",""))
+    nx.draw(G, coordinates, with_labels=False, node_shape=".", node_color="orangered", node_size=100, width=2, edge_color="orange" )
     plt.show()
 
 
 if __name__ == "__main__":
     filename = "img0_0_normal.gxl"
     plot_Graph(filename)
+    filename = "img0_1_normal.gxl"
+    plot_Graph(filename)
+    filename = "img0_2_normal.gxl"
+    plot_Graph(filename)
+    filename = "img0_3_normal.gxl"
+    plot_Graph(filename)
     filename = "img0_12_abnormal.gxl"
     plot_Graph(filename)
-    # filename = "img0_13_abnormal.gxl"
-    # plot_Graph(filename)
-    # filename = "img0_14_abnormal.gxl"
-    # plot_Graph(filename)
-    # filename = "img0_15_abnormal.gxl"
-    # plot_Graph(filename)
+    filename = "img0_13_abnormal.gxl"
+    plot_Graph(filename)
+    filename = "img0_14_abnormal.gxl"
+    plot_Graph(filename)
+    filename = "img0_15_abnormal.gxl"
+    plot_Graph(filename)
 
