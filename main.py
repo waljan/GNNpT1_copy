@@ -1,5 +1,3 @@
-from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK
-from Dataset_construction import DataConstructor
 import torch
 from torch_geometric.data import DataLoader
 import numpy as np
@@ -7,7 +5,9 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
 from statistics import mean
 
-
+#own modules
+from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK
+from Dataset_construction import DataConstructor
 
 def train(model, train_loader, optimizer, crit):
     model.train()
@@ -334,6 +334,8 @@ if __name__ == "__main__":
 
 
     train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m)
+
+
     # train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m)
 
 
