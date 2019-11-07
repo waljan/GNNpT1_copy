@@ -70,7 +70,7 @@ git clone https://github.com/waljan/GNNpT1.git
 
 
 
-Before creating a virtual environment and installing all the packages it might be necessary to remove the ~/.cache/pip directory
+Before creating a virtual environment and installing all the packages, it might be necessary to remove the ~/.cache/pip directory
 ```
 # remove the pip cache
 rm -r ~/.cache/pip/
@@ -86,7 +86,7 @@ conda activate GNNpT1Env
 
 
 
-To remove the the conda environment run the following code:
+To remove the conda environment run the following code:
 ```
 # first deactivate the conda environment that you want to remove
 conda deactivate
