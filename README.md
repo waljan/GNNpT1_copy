@@ -69,6 +69,15 @@ git clone https://github.com/waljan/GNNpT1.git
 ```
 
 
+
+Before creating a virtual environment and installing all the packages it might be necessary to remove the ~/.cache/pip directory
+```
+# remove the pip cache
+rm -r ~/.cache/pip/
+```
+
+
+
 create a virtual environment from the requirement.yml file:
 ```
 conda env create -f requirements.yml
