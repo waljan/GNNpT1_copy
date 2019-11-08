@@ -21,9 +21,12 @@ class DataConstructor():
         tree = ET.ElementTree(file=folder + filename)
         root = tree.getroot()
 
+        tree2 = ET.ElementTree(file= "graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+        root2 = tree2.getroot()
+
         # get the start and end points of every edge and store them in a list of lists
-        start_points = [int("".join(filter(str.isdigit, edge.attrib["_from"]))) for edge in root.iter("edge")]
-        end_points = [int("".join(filter(str.isdigit, edge.attrib["_to"]))) for edge in root.iter("edge")]
+        start_points = [int("".join(filter(str.isdigit, edge.attrib["_from"]))) for edge in root2.iter("edge")]
+        end_points = [int("".join(filter(str.isdigit, edge.attrib["_to"]))) for edge in root2.iter("edge")]
         edge_list = [[start_points[i], end_points[i]] for i in range(len(start_points))]
 
         # create a tensor needed to construct the graph
@@ -125,7 +128,7 @@ class DataConstructor():
             except:
                 print(file, "could not be loaded")
             img = re.split(pattern, file)[0] # get the image from which this graph was sampled
-            split = data_split[img][0]  # determine wheter this graph belongs to train val or test
+            split = data_split[img][0]  # determine whether this graph belongs to train val or test
 
             # add the data object for the graph to the corresponding list
             if split == "test":
@@ -176,7 +179,7 @@ class DataConstructor():
 
 
 if __name__ == "__main__":
-    # folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
     folder = "graphs/base-dataset/"
     filename = "img0_0_normal.gxl"
 
