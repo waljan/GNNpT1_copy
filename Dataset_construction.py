@@ -7,6 +7,7 @@ import os
 import csv
 import re
 
+
 class DataConstructor():
     def __init__(self):
         pass
@@ -34,8 +35,11 @@ class DataConstructor():
         for node in root.iter("node"):
             # get the feature vector of every node
             feature_vec = [float(value.text) for feature in node for value in feature]
-            feature_vec = feature_vec[:4]   # the last two entries corespond to the node-coordinates in the image
+            if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+                feature_vec = feature_vec[:4]   # the last two entries corespond to the node-coordinates in the image
                                             # the coordinates are not used as features
+            elif folder == "graphs/base-dataset/":
+                feature_vec = feature_vec[:33]
             # and append it to the list
             all_node_features.append(feature_vec)
 
