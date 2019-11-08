@@ -127,6 +127,7 @@ class DataConstructor():
                 data = self.get_graph(folder, file)
             except:
                 print(file, "could not be loaded")
+                continue
             img = re.split(pattern, file)[0] # get the image from which this graph was sampled
             split = data_split[img][0]  # determine whether this graph belongs to train val or test
 
