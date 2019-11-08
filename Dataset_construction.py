@@ -10,14 +10,14 @@ import re
 class DataConstructor():
     def __init__(self):
         pass
-    def get_graph(self, filename):
+    def get_graph(self, folder, filename):
         """
         this function takes a gxl-file as input and creates a graph as it is used in pytorch Geometric
         :param filename: gxl file that stores a graph
         :return python object modeling a single graph with various attributes
         """
         # initialize tree
-        tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+        tree = ET.ElementTree(file=folder + filename)
         root = tree.getroot()
 
         # get the start and end points of every edge and store them in a list of lists
@@ -84,20 +84,20 @@ class DataConstructor():
         return dic
 
     # get a list of all filenames
-    def raw_file_names(self):
+    def raw_file_names(self, folder):
         """
         this function creates a list of all the gxl filenames in the directory "graphs/paper-graphs/distance-based_10_13_14_35"
         :return: list of gxl-filenames
         """
         r_file_names = []
         # iterate over every file in the folder
-        for file in os.listdir("graphs/paper-graphs/distance-based_10_13_14_35"):
+        for file in os.listdir(folder):
             if file.endswith(".gxl"): #check if its a gxl file
                 r_file_names.append(file) #add the filename to the list
         #return the list of gxl filenames
         return r_file_names
 
-    def get_data_list(self, k=0):
+    def get_data_list(self, folder, k=0):
         """
         this function creates lists of data objects separated into train val and test
         :param k: k can take values from 0 to 3 and defines which datasplit in the 4-fold cross validation is used
@@ -112,13 +112,15 @@ class DataConstructor():
         val_data_list = []
 
         pattern = "_"
-
+        a=0
         # iterate over every filename
-        for filename in self.raw_file_names():
-            # create the data object tepresenting the graph stored in the file
-            data = self.get_graph(filename)
-
-            img = re.split(pattern, filename)[0] # get the image from which this graph was sampled
+        for file in self.raw_file_names(folder):
+            # create the data object representing the graph stored in the file
+            try:
+                data = self.get_graph(folder, file)
+            except:
+                print(file, "could not be loaded")
+            img = re.split(pattern, file)[0] # get the image from which this graph was sampled
             split = data_split[img][0]  # determine wheter this graph belongs to train val or test
 
             # add the data object for the graph to the corresponding list
@@ -170,12 +172,15 @@ class DataConstructor():
 
 
 if __name__ == "__main__":
+    # folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "graphs/base-dataset/"
     filename = "img0_0_normal.gxl"
+
     raw_data= DataConstructor()
-    train_data_list, val_data_list, test_data_list = raw_data.get_data_list()
+    train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder)
     print(len(train_data_list))
     print(train_data_list[0])
-    print(raw_data.get_graph(filename))
+    print(raw_data.get_graph(folder, filename))
 
     # Dataloader
     train_data = DataLoader(train_data_list, batch_size=32)
