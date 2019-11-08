@@ -286,9 +286,17 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         ltype = [":", "-.", "--","-"]
         plt.plot(x, train_accs, color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
         plt.plot(x, val_accs, color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
+        plt.ylim(0.5, 1)
     plt.legend()
+    if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+        title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
+        plt.title(title)
+    if folder == "graphs/base-dataset/":
+        title = "base-dataset, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
+        plt.title(title)
     plt.show()
     print("average val accuracy:", mean(val_res))
+    return(mean(val_res))
 
 
 
@@ -300,8 +308,20 @@ if __name__ == "__main__":
     import time
     import csv
 
+    # choose dataset
     folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
     folder = "graphs/base-dataset/"
+
+    # choose device
+    device = torch.device("cpu")
+    device = torch.device("cuda")
+
+    # choose one of the models by commenting out the others
+    # m = "GCNWithJK"
+    # m = "GCN"
+    # m = "GCNWithJK"
+    # m = "GraphSAGE"
+    m = "GraphSAGEWithJK"
 
 
 
@@ -318,23 +338,50 @@ if __name__ == "__main__":
         step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*gamma
 
     elif folder == "graphs/base-dataset/":
-        batch_size = 32
-        num_epochs = 50
-        num_layers = 4
-        num_input_features = 33
-        hidden = 32
-        lr = 0.01
-        lr_decay = 0.8
-        step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+        if m=="GCN": # 32, 15, 2, 33, 66, 0.005, 0.5, 4
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 2
+            num_input_features = 33
+            hidden = 66
+            lr = 0.005
+            lr_decay = 0.5
+            step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+
+        if m == "GCNWithJK":
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 2
+            num_input_features = 33
+            hidden = 66
+            lr = 0.005
+            lr_decay = 0.5
+            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+
+        if m == "GraphSAGE":
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 2
+            num_input_features = 33
+            hidden = 136
+            lr = 0.005
+            lr_decay = 0.5
+            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+
+        if m == "GraphSAGEWithJK":
+            # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
+            # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 3
+            num_input_features = 33
+            hidden = 66
+            lr = 0.005
+            lr_decay = 0.2
+            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
 
 
-    device = torch.device("cuda")
 
-    # choose one of the models by commenting out the others
-    m = "GCNWithJK"
-    m = "GCN"
-    m = "GraphSAGE"
-    m = "GraphSAGEWithJK"
 
 
     #
@@ -351,9 +398,15 @@ if __name__ == "__main__":
     #         wr.writerow(output)
 
 
+    # val_=[]
+    # for i in range(3):
+    #     val_.append(train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder))
+    #     print(val_)
+    # print(mean(val_))
+    # print(val_)
+    # print(len(val_))
 
-
-    train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
+    train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m,folder=folder)
 
 
     # train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
