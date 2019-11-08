@@ -3,7 +3,7 @@ import numpy as np
 
 # conda activate PyG373Msc
 
-def basic_info(filename):
+def basic_info(folder, filename):
     """
     this function just prints out some basic information about the graph
 
@@ -11,7 +11,7 @@ def basic_info(filename):
     :return: all the node features and edges of the graph
     """
 
-    tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    tree = ET.ElementTree(file=folder + filename)
     root = tree.getroot()
 
     # iterate over the nodes in the graph
@@ -39,7 +39,7 @@ def basic_info(filename):
     print("Graph", filename + ":\tnumber of nodes:", num_n, "\tnumber of node features:", num_f_perNode, "\tnumber of edges:", num_e )
 
 
-def get_node_features(filename):
+def get_node_features(folder, filename):
     """
     this function generates a dictionary containing all node features
 
@@ -49,7 +49,7 @@ def get_node_features(filename):
     """
 
     # initialize tree
-    tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    tree = ET.ElementTree(file=folder + filename)
     root = tree.getroot()
 
     # initialize the dictionary
@@ -78,7 +78,7 @@ def get_edges(filename):
 
     return (edge_list)
 
-def adj_from_gxl(filename):
+def adj_from_gxl(folder, filename):
     """
     this function takes a gxl file and returns adjacency matrix
 
@@ -87,7 +87,7 @@ def adj_from_gxl(filename):
     """
 
     # read in the file by initializing the tree
-    tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    tree = ET.ElementTree(file=folder + filename)
     root = tree.getroot()
 
     # get the number of nodes in the graph
@@ -111,14 +111,14 @@ import torch
 from torch_geometric.data import Data
 
 
-def get_graph(filename):
+def get_graph(folder, filename):
     """
     this function takes a gxl-file as input and creates a graph as it is used in pytorch Geometric
     :param filename: gxl file that stores a graph
     :return python object modeling a single graph with various attributes
     """
     # initialize tree
-    tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    tree = ET.ElementTree(file=folder + filename)
     root = tree.getroot()
 
     # get the start and end points of every edge and store them in a list of lists
@@ -157,19 +157,21 @@ def get_graph(filename):
     return (graph)
 
 
-def main(filename):
-    basic_info(filename)
-    A = (adj_from_gxl(filename))
-    dic = (get_node_features(filename))
+def main(folder, filename):
+    basic_info(folder, filename)
+    A = (adj_from_gxl(folder, filename))
+    dic = (get_node_features(folder, filename))
     print (A)
     for key, value in dic.items():
         print ("Node" + key + ":", value)
         break
-    g = get_graph(filename)
+    g = get_graph(folder, filename)
     print(g)
     print(g.y)
 
 
 if __name__ == "__main__":
+    folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "graphs/base-dataset/"
     filename = "img0_0_normal.gxl"
-    main(filename)
+    main(folder, filename)
