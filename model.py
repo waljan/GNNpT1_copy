@@ -1,8 +1,11 @@
 import torch
 import torch.nn.functional as F
-from torch.nn import Linear
-from torch_geometric.nn import GCNConv, SAGEConv, global_mean_pool, JumpingKnowledge
+from torch.nn import Linear, init
+from torch_geometric.nn import GCNConv, SAGEConv, GraphConv, JumpingKnowledge
+from torch_geometric.nn import global_mean_pool, TopKPooling, global_max_pool
 
+
+from GraphConvolutions import OwnGConv
 
 class GCN(torch.nn.Module):
     """
@@ -124,7 +127,6 @@ class GraphSAGE(torch.nn.Module):
     def __repr__(self):
         return self.__class__.__name__
 
-
 class GraphSAGEWithJK(torch.nn.Module):
     # https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/graph_sage.py
     def __init__(self, num_input_features, num_layers, hidden, mode='cat'):
@@ -165,3 +167,120 @@ class GraphSAGEWithJK(torch.nn.Module):
     def __repr__(self):
         return self.__class__.__name__
 
+
+class OwnGraphNN(torch.nn.Module):
+    def __init__(self, num_input_features, num_layers, hidden, mode='cat'):
+        super(OwnGraphNN, self).__init__()
+        self.conv1 = OwnGConv(num_input_features, hidden)
+        self.convs = torch.nn.ModuleList()
+        for i in range(num_layers - 1):
+            self.convs.append(OwnGConv(hidden, hidden))
+        self.jump = JumpingKnowledge(mode)
+        if mode == 'cat':
+            self.lin1 = Linear(2*num_layers * hidden, 2*hidden)
+        else:
+            self.lin1 = Linear(hidden, 2*hidden)
+        self.lin2 = Linear(2*hidden, hidden)
+        self.lin3 = Linear(hidden, 2)
+        # self.bn_conv1 = torch.nn.BatchNorm1d(hidden)
+        # self.bn_conv2 = torch.nn.BatchNorm1d(hidden)
+
+        self.reset_parameters()
+
+
+    def reset_parameters(self):
+        print("reset params")
+        self.conv1.reset_parameters()
+        for conv in self.convs:
+            conv.reset_parameters()
+        self.jump.reset_parameters()
+        self.lin1.reset_parameters()
+        self.lin2.reset_parameters()
+        self.lin3.reset_parameters()
+        # init.xavier_uniform_(self.lin1.weight, gain=init.calculate_gain("relu"))
+        # init.xavier_uniform_(self.lin2.weight, gain=init.calculate_gain("relu"))
+        # init.xavier_uniform_(self.lin3.weight, gain=init.calculate_gain("relu"))
+
+        # init.constant_(self.lin1.bias, 0.01)
+        # init.constant_(self.lin2.bias, 0.01)
+        # self.bn_conv1.reset_parameters()
+        # self.bn_conv2.reset_parameters()
+
+    def forward(self, data):
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+
+        # graph conv, ReLU non linearity, dropout
+        # x = F.relu(self.bn_conv1(self.conv1(x, edge_index)))
+        # x = F.relu(self.conv1(x, edge_index))
+        x = self.conv1(x, edge_index)
+        x = F.dropout(x, p=0.5,  training=self.training) #################
+        xs = [x]
+
+        # graph convs, ReLU non linearity, dropout
+        for conv in self.convs:
+            # x = F.relu(self.bn_conv2(conv(x, edge_index)))
+            # x = F.relu(conv(x, edge_index))
+            x = conv(x, edge_index)
+            x = F.dropout(x, p=0.5, training=self.training) #################
+            xs += [x]
+
+        x = self.jump(xs)
+
+        # graph pooling
+        # x = global_mean_pool(x, batch)
+        x = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1) ##################
+
+        # linear layer, ReLU non linearity, dropout
+        x = F.relu(self.lin1(x))
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        # linear layer, ReLU non linearity, dropout
+        x = F.relu(self.lin2(x))
+        x = F.dropout(x, p=0.5, training=self.training)
+
+        # final linear layer, log_softmax
+        x = self.lin3(x)
+        return F.log_softmax(x, dim=-1)
+
+    def __repr__(self):
+        return self.__class__.__name__
+
+class GraphNN(torch.nn.Module):
+
+    def __init__(self, num_input_features, num_layers, hidden):
+        super(GraphNN, self).__init__()
+        self.conv1 = GraphConv(num_input_features, hidden)
+        self.pool1 = TopKPooling(hidden, ratio=1)
+
+        self.convs = torch.nn.ModuleList()
+        for i in range(num_layers - 1):
+            self.convs.append(GraphConv(hidden, hidden))
+
+        self.pools = torch.nn.ModuleList()
+        for i in range(num_layers - 1):
+            self.pools.append(TopKPooling(hidden, ratio=1))
+
+        self.lin1 = Linear(2*hidden, hidden)
+        self.lin2 = Linear(hidden, 2)
+
+
+    def forward(self, data):
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+        x = F.relu(self.conv1(x, edge_index))
+        x, edge_index, _, batch, _, _ = self.pool1(x, edge_index, None, batch)
+        xs = [torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)]
+
+        for conv, pool in zip(self.convs, self.pools):
+            x = F.relu(conv(x, edge_index))
+            x, edge_index, _, batch, _, _ = pool(x, edge_index, None, batch)
+            xs.append(torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1))
+        x = sum(xs)
+
+        x = F.relu(self.lin1(x))
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.relu(self.lin2(x))
+
+        return F.log_softmax(x, dim=-1)
+
+    def __repr__(self):
+        return self.__class__.__name__
