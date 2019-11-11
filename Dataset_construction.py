@@ -6,7 +6,7 @@ from torch_geometric.data import DataLoader
 import os
 import csv
 import re
-
+import random
 
 class DataConstructor():
     def __init__(self):
@@ -34,19 +34,27 @@ class DataConstructor():
 
         # initialize the list
         all_node_features = []
+        all_node_positions = []
         # iterate over every node
         for node in root.iter("node"):
             # get the feature vector of every node
             feature_vec = [float(value.text) for feature in node for value in feature]
+
             if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+                node_position = feature_vec[4:]
                 feature_vec = feature_vec[:4]   # the last two entries corespond to the node-coordinates in the image
-                                            # the coordinates are not used as features
-            elif folder == "graphs/base-dataset/":
+                                                # the coordinates are not used as features
+
+            if folder == "graphs/base-dataset/":
+                node_position = feature_vec[33:]
                 feature_vec = feature_vec[:33]
+
             # and append it to the list
             all_node_features.append(feature_vec)
+            all_node_positions.append(node_position)
 
         # create a tensor needed to construct the graph
+
         x = torch.tensor(all_node_features, dtype=torch.float)
 
         # add graph label
@@ -58,8 +66,9 @@ class DataConstructor():
             print("the filename has not the correct format")
         y = torch.tensor([graph_class], dtype=torch.float)
 
+        pos = torch.tensor(all_node_positions, dtype=torch.float)
         # construct the graph
-        graph = Data(x=x, y=y, edge_index=edge_index.t().contiguous())
+        graph = Data(x=x, y=y, edge_index=edge_index.t().contiguous(), pos=pos)
 
 
         return (graph)
@@ -181,13 +190,14 @@ class DataConstructor():
 
 if __name__ == "__main__":
     folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "graphs/base-dataset/"
+    # folder = "graphs/base-dataset/"
     filename = "img0_0_normal.gxl"
 
     raw_data= DataConstructor()
     train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder)
     print(len(train_data_list))
     print(train_data_list[0])
+    print("feature vec:",train_data_list[0].x[0])
     print(raw_data.get_graph(folder, filename))
 
     # Dataloader
