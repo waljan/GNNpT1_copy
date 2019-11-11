@@ -1,12 +1,19 @@
 import torch
 from torch_geometric.data import DataLoader
+from torch_geometric.data import Data
+from torch_geometric import transforms
+from torch_geometric.utils import true_negative, true_positive, false_negative, false_positive
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
 from statistics import mean
+import random
+
+
 
 #own modules
-from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK
+from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, GraphNN
+# from GraphConvolutions import OwnGConv
 from Dataset_construction import DataConstructor
 
 
@@ -14,6 +21,7 @@ from Dataset_construction import DataConstructor
 def train(model, train_loader, optimizer, crit):
     model.train()
     loss_all = 0
+    count = 0
     # iterate over all batches in the training data
     for data in train_loader:
         data = data.to(device) # transfer the data to the device
@@ -23,13 +31,13 @@ def train(model, train_loader, optimizer, crit):
 
         label = data.y.to(device) # transfer the labels to the device
 
-        loss = crit(output, label) # conpute the loss between output and label
+        loss = crit(output, label) # compute the loss between output and label
         loss.backward() # compute the gradient
         loss_all += data.num_graphs * loss.item()
 
         optimizer.step() # adjust the parameters according to the gradient
-
-    return loss_all / len(train_loader)
+        count += data.num_graphs
+    return loss_all / count
 
 
 def evaluate(model, val_loader):
@@ -59,13 +67,16 @@ def evaluate(model, val_loader):
             num_graphs += 1
             #             print(max(predictions[batch][graph]))
             pred_idx = np.argmax(predictions[batch][graph])
+            predictions[batch][graph][pred_idx] = 1
+            predictions[batch][graph][pred_idx-1] = 0
             #             print(pred_idx)
             #             print(labels[batch][graph])
             if labels[batch][graph][pred_idx] == 1: # check if the correct label is predicted
                 correct_pred += 1
             else:
                 correct_pred += 0
-    return correct_pred / num_graphs
+    acc = correct_pred / num_graphs
+    return acc , predictions, labels
 
 def plot_acc_sep(train_accs, val_accs, test_accs):
     x = range(len(train_accs))
@@ -183,7 +194,15 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
     print("load data")
     raw_data = DataConstructor()
     test_res = []
+
+    train_accs = [[],[],[],[]]
+    test_accs = [[],[],[],[]]
+    losses = [[],[],[],[]]
+    preds = []
+    targets = []
+
     for k in range (4):
+        print(k)
         train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder,
             k=k)  # split the data into train val and test
 
@@ -205,6 +224,8 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
             model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
         elif m == "GraphSAGEWithJK":
             model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
+        elif m == "OwnGraphNN":
+            model = OwnGraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
 
 
 
@@ -212,40 +233,67 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
         scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
         crit = torch.nn.MSELoss()  # define the loss function
 
-        train_accs = []
-        test_accs = []
 
         # compute training and test accuracy for every epoch
         for epoch in range(num_epochs):
             loss = train(model, train_loader, optimizer, crit)  # train the model with the training_data
             scheduler.step()
-            train_acc = evaluate(model, train_loader)  # compute the accuracy for the training data
-            train_accs.append(train_acc)
-            test_acc = evaluate(model,test_loader)  # compute the accuracy for the test data
-            test_accs.append(test_acc)
+            losses[k].append(loss)
+            train_acc, _, _ = evaluate(model, train_loader)  # compute the accuracy for the training data
+            train_accs[k].append(train_acc)
+            test_acc, predictions, labels = evaluate(model,test_loader)  # compute the accuracy for the test data
+            test_accs[k].append(test_acc)
             if epoch == num_epochs-1:
                 test_res.append(test_acc)
+                preds.append(predictions)
+                targets.append(labels)
             if epoch % 1 == 0:
                 for param_group in optimizer.param_groups:
                     print('Epoch: {:03d}, lr: {:.5f}, Loss: {:.5f}, Train Acc: {:.5f}, Test Acc: {:.5f}'.format(epoch, param_group["lr"], loss, train_acc, test_acc))
-        # plot the training and test accuracies
-        x = range(len(train_accs))
-        ltype = [":", "-.", "--", "-"]
-        plt.plot(x, train_accs, color=(1, 0, 0), linestyle=ltype[k], label="train {}".format(k))
-        plt.plot(x, test_accs, color=(0, 1, 0), linestyle=ltype[k], label="test {}".format(k))
+
+    # plot the training and test accuracies
+    x = range(num_epochs)
+    ltype = [":", "-.", "--", "-"]
+    plt.subplot(2, 1, 1)
+    for k in range(4):
+        plt.plot(x, train_accs[k], color=(1, 0, 0), linestyle=ltype[k], label="train {}".format(k))
+        plt.plot(x, test_accs[k], color=(0, 1, 0), linestyle=ltype[k], label="test {}".format(k))
+        plt.ylim(0.5, 1)
+
     plt.legend()
+    if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+        title = "paper-graphs, " + m + "   Test accuracy: " + str(round(100 * mean(test_res), 2)) + "%"
+        plt.title(title)
+    if folder == "graphs/base-dataset/":
+        title = "base-dataset, " + m + "   Test accuracy: " + str(round(100 * mean(test_res), 2)) + "%"
+        plt.title(title)
+
+    plt.subplot(2, 1, 2)
+    for k in range(4):
+        plt.plot(x, losses[k], color=(1, 0, 0), linestyle=ltype[k])
+
     plt.show()
+
+
     print("average val accuracy:", mean(test_res))
 
 def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder):
     print("load data")
     raw_data = DataConstructor()
     val_res = []
+
+    train_accs = [[],[],[],[]]
+    val_accs = [[],[],[],[]]
+    losses = [[],[],[],[]]
+    preds = []
+    targets = []
+
     for k in range(4):
         print(k)
         train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder,
             k=k)  # split the data into train val and test
         print("train size:", len(train_data_list), "val size:", len(val_data_list))
+
         # initialize the data loaders
         train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
         val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
@@ -259,34 +307,44 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
         elif m == "GraphSAGEWithJK":
             model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
+        elif m == "OwnGraphNN":
+            model = OwnGraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
+        elif m == "GraphNN":
+            model = GraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
 
-
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # define the optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=4e-3)  # define the optimizer
         scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
         crit = torch.nn.MSELoss()  # define the loss function
 
-        train_accs = []
-        val_accs = []
 
         # compute training and test accuracy for every epoch
         for epoch in range(num_epochs):
             loss = train(model, train_loader, optimizer, crit)  # train the model with the training_data
             scheduler.step()
-            train_acc = evaluate(model, train_loader)  # compute the accuracy for the training data
-            train_accs.append(train_acc)
-            val_acc = evaluate(model,val_loader)  # compute the accuracy for the test data
-            val_accs.append(val_acc)
+            losses[k].append(loss)
+            train_acc , _, _= evaluate(model, train_loader)  # compute the accuracy for the training data
+            train_accs[k].append(train_acc)
+            val_acc, predictions, labels = evaluate(model,val_loader)  # compute the accuracy for the test data
+            val_accs[k].append(val_acc)
+
             if epoch == num_epochs-1:
                 val_res.append(val_acc)
+                preds.append(predictions)
+                targets.append(labels)
             if epoch % 1 == 0:
                 for param_group in optimizer.param_groups:
                     print('Epoch: {:03d}, lr: {:.5f}, Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
-        # plot the training and test accuracies
-        x = range(len(train_accs))
-        ltype = [":", "-.", "--","-"]
-        plt.plot(x, train_accs, color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
-        plt.plot(x, val_accs, color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
+
+    # plot the training and test accuracies
+    x = range(num_epochs)
+    ltype = [":", "-.", "--","-"]
+
+    plt.subplot(2, 1, 1)
+    for k in range(4):
+        plt.plot(x, train_accs[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
+        plt.plot(x, val_accs[k], color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
         plt.ylim(0.5, 1)
+
     plt.legend()
     if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
         title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
@@ -294,7 +352,41 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
     if folder == "graphs/base-dataset/":
         title = "base-dataset, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
         plt.title(title)
+
+    plt.subplot(2, 1, 2)
+    for k in range(4):
+        plt.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k])
+
     plt.show()
+
+    for k in range(4):
+        tps = 0
+        tns = 0
+        fps = 0
+        fns = 0
+        print("k =",k,"-------------")
+        for pred_batch , target_batch in zip(preds[k], targets[k]):
+            pr = np.asarray(pred_batch)
+            pr = pr[:,0]
+
+            tr = np.asarray(target_batch)
+            tr = tr[:,0]
+
+            for p, t in zip(pr, tr):
+                if p == 1 and t == 1:
+                    tps += 1
+                if p == 1 and t == 0:
+                    fps += 1
+                if p == 0 and t == 0:
+                    tns += 1
+                if p == 0 and t == 1:
+                    fns += 1
+
+        print("true positives:", tps)
+        print("true negatives:", tns)
+        print("false positives:", fps)
+        print("false_negatives:", fns)
+
     print("average val accuracy:", mean(val_res))
     return(mean(val_res))
 
@@ -322,6 +414,8 @@ if __name__ == "__main__":
     # m = "GCNWithJK"
     # m = "GraphSAGE"
     m = "GraphSAGEWithJK"
+    m = "OwnGraphNN"
+    # m = "GraphNN"
 
 
 
@@ -380,11 +474,40 @@ if __name__ == "__main__":
             lr_decay = 0.2
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
 
+        if m == "OwnGraphNN":
+            batch_size = 32
+            num_epochs = 10
+            num_layers = 3
+            num_input_features = 33
+            hidden = 66
+            lr = 0.004
+            lr_decay = 0.2
+            step_size = 4
+        if m == "OwnGraphNN":
+            batch_size = 32
+            num_epochs = 30
+            num_layers = 3
+            num_input_features = 33
+            hidden = 132
+            lr = 0.001
+            lr_decay = 0.5
+            step_size = 10
+
+        if m == "GraphNN":
+            # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
+            # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 3
+            num_input_features = 33
+            hidden = 66
+            lr = 0.01
+            lr_decay = 0.2
+            step_size = 4  # step_size = 1, after eve
 
 
 
-
-    #
+            #
     # # grid search for Hyperparameters
     # timestr = time.strftime(("%Y%m%d_%H%M%S"))
     # filename = "Results/Val/" + m + timestr + ".csv"
@@ -406,9 +529,8 @@ if __name__ == "__main__":
     # print(val_)
     # print(len(val_))
 
-    train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m,folder=folder)
-
-
+    train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
+    #
+    #
     # train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
-
 
