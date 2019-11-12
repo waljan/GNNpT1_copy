@@ -209,18 +209,34 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
     import numpy as np
+    from statistics import stdev, mean
+
+    # fig, axs = plt.subplots(4, len(train_data_list[0].x[0])//4 + 1)
+    # r = 0
+    # c = 0
+
+    plt.rc("font", size=5)
 
     for f in range(len(train_data_list[0].x[0])):
         f_vec = []
 
         for graph in train_data_list:
             for nd in range(len(graph.x)):
-                f_vec.append(graph.x[nd][f])
+                f_vec.append(graph.x[nd][f].item())
 
-        plt.subplot(2, len(train_data_list[0].x[0])//2+1, f+1)
-        plt.hist(f_vec)
-        plt.title("f"+ str(f))
+        # axs[r, c].hist(f_vec)
+        # r += 1
+        # c += 1
+        # if r == 4:
+        #     r=0
+        # if c == len(train_data_list[0].x[0])//4 + 1:
+        #     c=0
 
+        plt.subplot(4, len(train_data_list[0].x[0])//4+1, f+1)
+        plt.hist(f_vec, density=True)
+        plt.title("f"+ str(f) + "  std: " + str(stdev(f_vec))[:4] + "  mean: " + str(mean(f_vec))[:4])
+
+    # plt.tight_layout()
     plt.show()
 
 
@@ -237,13 +253,13 @@ if __name__ == "__main__":
             elif graph.y[0][0].item() == 0: #normal
                 for nd in range(len(graph.x)):
                     f_vec_normal.append(graph.x[nd][f])
-        # print(len(f_vec_abnormal), len(f_vec_normal))
-        plt.subplot(2, len(train_data_list[0].x[0])//2+1, f+1)
+
+        plt.subplot(4, len(train_data_list[0].x[0])//4+1, f+1)
         plt.hist(f_vec_normal, alpha=0.5, label="n", density=True)
         plt.hist(f_vec_abnormal, alpha=0.5, label="a", density=True)
         plt.legend()
         plt.title("f"+ str(f))
-
+    plt.tight_layout()
     plt.show()
 
 
@@ -258,5 +274,6 @@ if __name__ == "__main__":
     plt.hist(num_nd_n, bins, alpha=0.5, label="normal")
     plt.hist(num_nd_ab, bins, alpha=0.5, label="abnormal")
     plt.title("number of nodes per class")
+    plt.ylabel("freq")
     plt.legend()
     plt.show()
