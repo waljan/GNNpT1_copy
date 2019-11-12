@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
 from statistics import mean
 import random
+import copy
 
 
 
@@ -277,7 +278,7 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
 
     print("average val accuracy:", mean(test_res))
 
-def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder):
+def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment):
     print("load data")
     raw_data = DataConstructor()
     val_res = []
@@ -294,8 +295,39 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             k=k)  # split the data into train val and test
         print("train size:", len(train_data_list), "val size:", len(val_data_list))
 
-        # initialize the data loaders
-        train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
+        # augment data by adding/subtracting small random values from node features
+        if augment == True:
+            train_data_list_aug = copy.deepcopy(train_data_list)
+            c=0
+            for i in range(4): # how often the augmentation is done
+                r_factors = np.random.rand(101, 101)  # create array of random numbers
+                train_data_list_cp = copy.deepcopy(train_data_list)
+                for graph in range(len(train_data_list)): # iterate over every graph
+                    for nd in range(len(train_data_list[graph].x)): # iterate over every node
+                        for f in range(len(train_data_list[graph].x[nd])): # iterate over every node feature
+                            choice = r_factors[f,c]  # draw random number to determine whether to add or subtract
+                            r_factor = r_factors[c+1,f]  # draw a random number to determine the value that will be added/subtracted
+                            r_factor2 = r_factors[c,c+1]
+                            c+=1
+                            if c==100:
+                                c=0
+                            if choice >= 0.5:
+                                train_data_list_cp[graph].x[nd][f] += r_factor2*r_factor # add a small random value to the feature "f" of node "nd" of graph "graph"
+                            if choice < 0.5:
+                                r_factor = 1-r_factor
+                                train_data_list_cp[graph].x[nd][f] -= r_factor2*r_factor # subtract a small random value to the feature "f" of node "nd" of graph "graph"
+
+                    train_data_list_aug.append(train_data_list_cp[graph])
+
+            print("augm. train size:", len(train_data_list_aug), "val size:", len(val_data_list))
+
+            # initialize train loader
+            train_loader = DataLoader(train_data_list_aug, batch_size=batch_size, shuffle=True)
+
+        else:
+            # initialize train loader
+            train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
+        # initialize val loader
         val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
 
         print("initialize model", m)
@@ -413,7 +445,7 @@ if __name__ == "__main__":
     # m = "GCN"
     # m = "GCNWithJK"
     # m = "GraphSAGE"
-    m = "GraphSAGEWithJK"
+    # m = "GraphSAGEWithJK"
     m = "OwnGraphNN"
     # m = "GraphNN"
 
@@ -441,6 +473,7 @@ if __name__ == "__main__":
             lr = 0.005
             lr_decay = 0.5
             step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            augment = False
 
         if m == "GCNWithJK":
             batch_size = 32
@@ -451,6 +484,7 @@ if __name__ == "__main__":
             lr = 0.005
             lr_decay = 0.5
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            augment = False
 
         if m == "GraphSAGE":
             batch_size = 32
@@ -461,6 +495,7 @@ if __name__ == "__main__":
             lr = 0.005
             lr_decay = 0.5
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            augment = False
 
         if m == "GraphSAGEWithJK":
             # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
@@ -483,6 +518,8 @@ if __name__ == "__main__":
             lr = 0.004
             lr_decay = 0.2
             step_size = 4
+            augment = False
+
         if m == "OwnGraphNN":
             batch_size = 32
             num_epochs = 30
@@ -492,6 +529,18 @@ if __name__ == "__main__":
             lr = 0.001
             lr_decay = 0.5
             step_size = 10
+            augment = False
+
+        # if m == "OwnGraphNN":
+        #     batch_size = 64
+        #     num_epochs = 20
+        #     num_layers = 3
+        #     num_input_features = 33
+        #     hidden = 66
+        #     lr = 0.001
+        #     lr_decay = 0.5
+        #     step_size = 5
+        #     augment = True
 
         if m == "GraphNN":
             # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
@@ -529,7 +578,8 @@ if __name__ == "__main__":
     # print(val_)
     # print(len(val_))
 
-    train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
+
+    train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
     #
     #
     # train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
