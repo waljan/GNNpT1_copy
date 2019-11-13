@@ -441,7 +441,7 @@ if __name__ == "__main__":
     device = torch.device("cuda")
 
     # choose one of the models by commenting out the others
-    # m = "GCNWithJK"
+
     # m = "GCN"
     # m = "GCNWithJK"
     # m = "GraphSAGE"
@@ -452,16 +452,74 @@ if __name__ == "__main__":
 
 
     if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
-        # 30,40,3,4,4,0.01,cpu, 0,True --> more than 85%
-        # 32, 100, 4, 4, 4, 0.01, 0.95, 1, cuda, 0, True --> at epoch 60 >86%
-        batch_size = 32
-        num_epochs = 50
-        num_layers = 4
-        num_input_features = 4
-        hidden = 32
-        lr = 0.01
-        lr_decay = 0.8
-        step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*gamma
+
+        if m=="GCN":
+            batch_size = 32
+            num_epochs = 50
+            num_layers = 3
+            num_input_features = 4
+            hidden = 32
+            lr = 0.01
+            lr_decay = 0.95
+            step_size = 1
+            augment=False
+
+        if m=="GCNWithJK":
+            batch_size = 32
+            num_epochs = 40
+            num_layers = 3
+            num_input_features = 4
+            hidden = 32
+            lr = 0.005
+            lr_decay = 0.8
+            step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*gamma
+            augment=False
+
+        if m=="GraphSAGE":
+            batch_size = 32
+            num_epochs = 40
+            num_layers = 3
+            num_input_features = 4
+            hidden = 32
+            lr = 0.005
+            lr_decay = 0.8
+            step_size = 4
+            augment=False
+
+        if m=="GraphSAGEWithJK":
+            batch_size = 32
+            num_epochs = 40
+            num_layers = 3
+            num_input_features = 4
+            hidden = 32
+            lr = 0.005
+            lr_decay = 0.8
+            step_size = 4
+            augment=False
+
+        if m == "OwnGraphNN":
+            batch_size = 32
+            num_epochs = 40
+            num_layers = 3
+            num_input_features = 4
+            hidden = 32
+            lr = 0.005
+            lr_decay = 0.8
+            step_size = 4
+            augment = False
+
+##### paper dataset:##################################################
+    # 79-85% depending on model and initialization
+    # large difference between runs (init)
+    # large difference between epochs (zick zack)
+    # val worse than train (overfitting to patient?) (up to 15%)
+    # large variance between different train and val sets during cross validation
+    # sometimes accuracy stays at 0.5. --> too large/small learning rate and/or bad initialization?
+    # data augmentation most often decreases val accuracy. --> need different kind of augmentation. How many? parameters adjustment (batchsize)?
+    # No clear difference between JK and not JK
+    # what kind of models/convolutions would make sense?
+    # How to properly validate the model? What to plot?
+######################################################################
 
     elif folder == "graphs/base-dataset/":
         if m=="GCN": # 32, 15, 2, 33, 66, 0.005, 0.5, 4
@@ -508,21 +566,11 @@ if __name__ == "__main__":
             lr = 0.005
             lr_decay = 0.2
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            augment=False
 
-        if m == "OwnGraphNN":
+        if m == "OwnGraphNN": # no augmentation, base dataset
             batch_size = 32
-            num_epochs = 10
-            num_layers = 3
-            num_input_features = 33
-            hidden = 66
-            lr = 0.004
-            lr_decay = 0.2
-            step_size = 4
-            augment = False
-
-        if m == "OwnGraphNN":
-            batch_size = 32
-            num_epochs = 30
+            num_epochs = 20
             num_layers = 3
             num_input_features = 33
             hidden = 132
@@ -554,7 +602,16 @@ if __name__ == "__main__":
             lr_decay = 0.2
             step_size = 4  # step_size = 1, after eve
 
-
+ ############ base dataset: ##########################################
+            # 93-95% depending on model and initialization
+            # large difference between runs (init)(but less than paper dataset)
+            # val worse than train (overfitting to patient?)(up to 15%)
+            # large variance between different train and val sets during cross validation (but less than paper dataset)
+            # data augmentation most often decreases val accuracy. --> need different kind of augmentation. How many? parameters adjustment (batchsize)?
+            # No clear difference between JK and not JK
+            # what kind of models/convolutions would make sense?
+            # How to properly validate the model? What to plot?
+######################################################################
 
             #
     # # grid search for Hyperparameters
