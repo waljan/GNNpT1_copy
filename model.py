@@ -20,8 +20,10 @@ class GCN(torch.nn.Module):
             self.convs.append(GCNConv(hidden, hidden))  # remaining GCNconv layers
         self.lin1 = Linear(hidden, hidden)  #linear layer
         self.lin2 = Linear(hidden, 2)       #linear layer, output layer, 2 classes
+        self.reset_parameters()
 
     def reset_parameters(self):     #reset all conv and linear layers except the first GCNConv layer
+        print("reset parameters")
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GCNConv class
