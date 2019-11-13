@@ -590,17 +590,18 @@ if __name__ == "__main__":
         #     step_size = 5
         #     augment = True
 
-        if m == "GraphNN":
-            # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
-            # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
-            batch_size = 32
-            num_epochs = 15
-            num_layers = 3
-            num_input_features = 33
-            hidden = 66
-            lr = 0.01
-            lr_decay = 0.2
-            step_size = 4  # step_size = 1, after eve
+        # if m == "GraphNN":
+            # # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
+            # # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
+            # batch_size = 32
+            # num_epochs = 15
+            # num_layers = 3
+            # num_input_features = 33
+            # hidden = 66
+            # lr = 0.01
+            # lr_decay = 0.2
+            # step_size = 4
+            # augment=False
 
  ############ base dataset: ##########################################
             # 93-95% depending on model and initialization
