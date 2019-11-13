@@ -444,9 +444,9 @@ if __name__ == "__main__":
 
     # m = "GCN"
     # m = "GCNWithJK"
-    # m = "GraphSAGE"
+    m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
-    m = "OwnGraphNN"
+    # m = "OwnGraphNN"
     # m = "GraphNN"
 
 
