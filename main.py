@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import torch
 from torch_geometric.data import DataLoader
 from torch_geometric.data import Data
@@ -13,9 +15,10 @@ import copy
 
 
 #own modules
-from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, GraphNN
+from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, GraphNN, NMP
 # from GraphConvolutions import OwnGConv
 from Dataset_construction import DataConstructor
+from MLP import MLP
 
 
 
@@ -343,8 +346,10 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             model = OwnGraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
         elif m == "GraphNN":
             model = GraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
+        elif m == "NMP":
+            model = NMP(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden , nn=MLP(1,5)).to(device)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=4e-3)  # define the optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # define the optimizer
         scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
         crit = torch.nn.MSELoss()  # define the loss function
 
@@ -448,6 +453,7 @@ if __name__ == "__main__":
     # m = "GraphSAGEWithJK"
     # m = "OwnGraphNN"
     # m = "GraphNN"
+    # m = "NMP"
 
 
 
@@ -519,6 +525,15 @@ if __name__ == "__main__":
     # No clear difference between JK and not JK
     # what kind of models/convolutions would make sense?
     # How to properly validate the model? What to plot?
+
+    # learning rate decay
+    # init ist normal
+    # k fold ist normal
+    #TODO
+    # augment only some nodes and some features
+    # try with coordinates as node features
+    # try node distance as edge feature
+    # comment code, shape of tensors ect.
 ######################################################################
 
     elif folder == "graphs/base-dataset/":
@@ -577,6 +592,17 @@ if __name__ == "__main__":
             lr = 0.001
             lr_decay = 0.5
             step_size = 10
+            augment = False
+
+        if m == "NMP": ######################## not yet working
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 2
+            num_input_features = 33
+            hidden = 132
+            lr = 0.005
+            lr_decay = 0.5
+            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
         # if m == "OwnGraphNN":
