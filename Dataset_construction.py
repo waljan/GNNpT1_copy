@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import xml.etree.ElementTree as ET
 import torch
 from torch_geometric.data import Data
@@ -67,8 +69,17 @@ class DataConstructor():
         y = torch.tensor([graph_class], dtype=torch.float)
 
         pos = torch.tensor(all_node_positions, dtype=torch.float)
+
+        # compute the length of every edge based on the cooridnates of the nodes
+        distances = []
+        for edge in edge_index:
+            positions = pos[edge]
+            distances.append([torch.dist(positions[0], positions[1], p=2)])#compute L2 norm
+
+        edge_attr = torch.tensor(distances, dtype=torch.float)
+
         # construct the graph
-        graph = Data(x=x, y=y, edge_index=edge_index.t().contiguous(), pos=pos)
+        graph = Data(x=x, y=y, edge_attr =edge_attr, edge_index=edge_index.t().contiguous(), pos=pos)
 
 
         return (graph)
