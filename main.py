@@ -19,6 +19,7 @@ from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, Graph
 # from GraphConvolutions import OwnGConv
 from Dataset_construction import DataConstructor
 from MLP import MLP
+from Data_Augmentation import augment as aug
 
 
 
@@ -300,28 +301,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
 
         # augment data by adding/subtracting small random values from node features
         if augment == True:
-            train_data_list_aug = copy.deepcopy(train_data_list)
-            c=0
-            for i in range(4): # how often the augmentation is done
-                r_factors = np.random.rand(101, 101)  # create array of random numbers
-                train_data_list_cp = copy.deepcopy(train_data_list)
-                for graph in range(len(train_data_list)): # iterate over every graph
-                    for nd in range(len(train_data_list[graph].x)): # iterate over every node
-                        for f in range(len(train_data_list[graph].x[nd])): # iterate over every node feature
-                            choice = r_factors[f,c]  # draw random number to determine whether to add or subtract
-                            r_factor = r_factors[c+1,f]  # draw a random number to determine the value that will be added/subtracted
-                            r_factor2 = r_factors[c,c+1]
-                            c+=1
-                            if c==100:
-                                c=0
-                            if choice >= 0.5:
-                                train_data_list_cp[graph].x[nd][f] += r_factor2*r_factor # add a small random value to the feature "f" of node "nd" of graph "graph"
-                            if choice < 0.5:
-                                r_factor = 1-r_factor
-                                train_data_list_cp[graph].x[nd][f] -= r_factor2*r_factor # subtract a small random value to the feature "f" of node "nd" of graph "graph"
-
-                    train_data_list_aug.append(train_data_list_cp[graph])
-
+            train_data_list_aug = aug(train_data_list)
             print("augm. train size:", len(train_data_list_aug), "val size:", len(val_data_list))
 
             # initialize train loader
