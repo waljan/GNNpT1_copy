@@ -61,7 +61,7 @@ This work is part of a larger project. Find out more [here](https://icosys.ch/bt
 ## Requirements:
 clone the repository using the terminal:
 ```
-# first change to the local directory where you want to clone your repository
+# first change to the local directory where you want to clone the repository to
 cd ...
 
 # clone the repo
