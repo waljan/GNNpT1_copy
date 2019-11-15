@@ -13,7 +13,7 @@ def plot_Graph(folder, filename):
     """
     #load the image
     p = filename.split("_")
-    img_path = "dataset/" + p[0] + "/" + filename.replace(".gxl","") + "/" + filename.replace(".gxl","-image.jpg")
+    img_path = "pT1_dataset/dataset/" + p[0] + "/" + filename.replace(".gxl","") + "/" + filename.replace(".gxl","-image.jpg")
     # img=Image.open("dataset/img0/img0_0_normal/img0_0_normal-image.jpg")
     img=Image.open(img_path)
 
@@ -22,9 +22,9 @@ def plot_Graph(folder, filename):
     attr_dic =  readgxl.get_node_features(folder, filename)
 
     # get the coordinates of every node
-    if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         coordinates = [[attr_dic[node][4], attr_dic[node][5]] for node in attr_dic]
-    elif folder == "graphs/base-dataset/":
+    elif folder == "pT1_dataset/graphs/base-dataset/":
         coordinates = [[attr_dic[node][33], attr_dic[node][34]] for node in attr_dic]
     # scale the node coordinates to the image size
     for i in range(len(coordinates)):
@@ -58,8 +58,8 @@ def plot_Graph(folder, filename):
 
 
 if __name__ == "__main__":
-    folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "pT1_dataset/graphs/base-dataset/"
 
     filename = "img0_0_normal.gxl"
     plot_Graph(folder, filename)

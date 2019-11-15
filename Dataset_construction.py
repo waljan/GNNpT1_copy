@@ -23,7 +23,7 @@ class DataConstructor():
         tree = ET.ElementTree(file=folder + filename)
         root = tree.getroot()
 
-        tree2 = ET.ElementTree(file= "graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+        tree2 = ET.ElementTree(file= "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
         root2 = tree2.getroot()
 
         # get the start and end points of every edge and store them in a list of lists
@@ -42,12 +42,12 @@ class DataConstructor():
             # get the feature vector of every node
             feature_vec = [float(value.text) for feature in node for value in feature]
 
-            if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+            if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
                 node_position = feature_vec[4:]
                 feature_vec = feature_vec[:4]   # the last two entries corespond to the node-coordinates in the image
                                                 # the coordinates are not used as features
 
-            if folder == "graphs/base-dataset/":
+            if folder == "pT1_dataset/graphs/base-dataset/":
                 node_position = feature_vec[33:]
                 feature_vec = feature_vec[:33]
 
@@ -95,7 +95,7 @@ class DataConstructor():
         """
 
         # open the csv file
-        with open("dataset_split.csv") as csv_file:
+        with open("pT1_dataset/dataset_split.csv") as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=",")
             line_count = 0
             dic = {}
@@ -200,8 +200,8 @@ class DataConstructor():
 
 
 if __name__ == "__main__":
-    folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "pT1_dataset/graphs/base-dataset/"
     filename = "img0_0_normal.gxl"
 
     raw_data= DataConstructor()

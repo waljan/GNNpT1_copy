@@ -68,7 +68,7 @@ def get_edges(filename):
     :return: list of lists, each internal list contains the starting and endpoints of an edge
     """
     # initialize tree
-    tree = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    tree = ET.ElementTree(file="pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
     root = tree.getroot()
 
     # get the start and end points of every edge and store them in a list of lists
@@ -121,7 +121,7 @@ def get_graph(folder, filename):
     tree = ET.ElementTree(file=folder + filename)
     root = tree.getroot()
 
-    tree2 = ET.ElementTree(file="graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
+    tree2 = ET.ElementTree(file="pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
     root2 = tree2.getroot()
 
     # get the start and end points of every edge and store them in a list of lists
@@ -174,7 +174,7 @@ def main(folder, filename):
 
 
 if __name__ == "__main__":
-    folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "pT1_dataset/graphs/base-dataset/"
     filename = "img0_0_normal.gxl"
     main(folder, filename)
