@@ -20,6 +20,7 @@ from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, Graph
 from Dataset_construction import DataConstructor
 from MLP import MLP
 from Data_Augmentation import augment as aug
+from Save_Data_Objects import load_obj
 
 
 
@@ -266,10 +267,10 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
         plt.ylim(0.5, 1)
 
     plt.legend()
-    if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         title = "paper-graphs, " + m + "   Test accuracy: " + str(round(100 * mean(test_res), 2)) + "%"
         plt.title(title)
-    if folder == "graphs/base-dataset/":
+    if folder == "pT1_dataset/graphs/base-dataset/":
         title = "base-dataset, " + m + "   Test accuracy: " + str(round(100 * mean(test_res), 2)) + "%"
         plt.title(title)
 
@@ -282,9 +283,20 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
 
     print("average val accuracy:", mean(test_res))
 
+
+###############################
+###############################
+
+
 def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment):
     print("load data")
-    raw_data = DataConstructor()
+    # raw_data = DataConstructor()
+    all_lists = load_obj(folder)
+    all_train_lists = all_lists[0]
+    all_val_lists = all_lists[1]
+    all_test_lists = all_lists[2]
+    all_train_aug_lists = all_lists[3]
+
     val_res = []
 
     train_accs = [[],[],[],[]]
@@ -294,22 +306,33 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
     targets = []
 
     for k in range(4):
-        print(k)
-        train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder,
-            k=k)  # split the data into train val and test
-        print("train size:", len(train_data_list), "val size:", len(val_data_list))
+        print("k:", k)
 
         # augment data by adding/subtracting small random values from node features
         if augment == True:
-            train_data_list_aug = aug(train_data_list)
-            print("augm. train size:", len(train_data_list_aug), "val size:", len(val_data_list))
+            indices = list(range(0, len(all_train_lists[k]))) # get all original graphs
 
-            # initialize train loader
-            train_loader = DataLoader(train_data_list_aug, batch_size=batch_size, shuffle=True)
+            # randomly select n_aug augmented graphs
+            n_aug = 750
+            indices.extend(random.sample(range(len(all_train_lists[k]), len(all_train_aug_lists[k])),n_aug))
+
+            # create the train_data_list and val_data_list used for the DataLoader
+            train_data_list = [all_train_aug_lists[k][i] for i in indices] # contains all original graphs plus num_aug augmented graphs
+            val_data_list = all_val_lists[k]
+
+            print("augm. train size:", len(train_data_list), "val size:", len(val_data_list))
+
 
         else:
-            # initialize train loader
-            train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
+            # create the train_data_list and val_data_list used for the DataLoader
+            train_data_list = all_train_lists[k]
+            val_data_list = all_val_lists[k]
+            test_data_list = all_test_lists[k]
+            print("train size:", len(train_data_list), "val size:", len(val_data_list))
+
+
+        # initialize train loader
+        train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
         # initialize val loader
         val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
 
@@ -363,17 +386,19 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         plt.ylim(0.5, 1)
 
     plt.legend()
-    if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
         plt.title(title)
-    if folder == "graphs/base-dataset/":
+    if folder == "pT1_dataset/graphs/base-dataset/":
         title = "base-dataset, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
         plt.title(title)
 
-    plt.subplot(2, 1, 2)
+    #
+    plot_loss = plt.subplot(2, 1, 2)
     for k in range(4):
-        plt.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k])
-
+        plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k])
+    plot_loss.set_title("train loss")
+    plt.tight_layout()
     plt.show()
 
     for k in range(4):
@@ -418,8 +443,8 @@ if __name__ == "__main__":
     import csv
 
     # choose dataset
-    folder = "graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "pT1_dataset/graphs/base-dataset/"
 
     # choose device
     device = torch.device("cpu")
@@ -437,7 +462,7 @@ if __name__ == "__main__":
 
 
 
-    if folder == "graphs/paper-graphs/distance-based_10_13_14_35/":
+    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
 
         if m=="GCN":
             batch_size = 32
@@ -516,7 +541,7 @@ if __name__ == "__main__":
     # comment code, shape of tensors ect.
 ######################################################################
 
-    elif folder == "graphs/base-dataset/":
+    elif folder == "pT1_dataset/graphs/base-dataset/":
         if m=="GCN": # 32, 15, 2, 33, 66, 0.005, 0.5, 4
             batch_size = 32
             num_epochs = 15
@@ -549,6 +574,17 @@ if __name__ == "__main__":
             lr_decay = 0.5
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
+
+        if m == "GraphSAGE":
+            batch_size = 128
+            num_epochs = 15
+            num_layers = 2
+            num_input_features = 33
+            hidden = 136
+            lr = 0.005
+            lr_decay = 0.5
+            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            augment = True
 
         if m == "GraphSAGEWithJK":
             # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
