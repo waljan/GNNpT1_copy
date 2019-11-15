@@ -26,8 +26,6 @@ from Save_Data_Objects import load_obj
 
 def train(model, train_loader, optimizer, crit):
     model.train()
-    loss_all = 0
-    count = 0
     # iterate over all batches in the training data
     for data in train_loader:
         data = data.to(device) # transfer the data to the device
@@ -39,30 +37,33 @@ def train(model, train_loader, optimizer, crit):
 
         loss = crit(output, label) # compute the loss between output and label
         loss.backward() # compute the gradient
-        loss_all += data.num_graphs * loss.item()
 
         optimizer.step() # adjust the parameters according to the gradient
-        count += data.num_graphs
-    return loss_all / count
 
 
-def evaluate(model, val_loader):
+def evaluate(model, val_loader, crit):
     model.eval()
     predictions = []
     labels = []
+    loss_all =0
+    count=0
 
     with torch.no_grad(): # gradients don't need to be calculated in evaluation
 
         # pass data through the model and get label and prediction
         for data in val_loader: # iterate over every batch in validation training set
             data = data.to(device) # trainsfer data to device
-            pred = model(data).detach().cpu().numpy()   # pass the data through the model and store the predictions in a numpy array
+            predT = model(data)#.detach().cpu().numpy()   # pass the data through the model and store the predictions in a numpy array
                                                         # for a batch of 30 graphs, the array has shape [30,2]
-
-            label = data.y.detach().cpu().numpy()   # store the labels of the data in a numpy array,
-                                                    # for a batch of 30 graphs, the array has shaüe [30, 2]
+            pred = predT.detach().cpu().numpy()
+            labelT = data.y#.detach().cpu().numpy()   # store the labels of the data in a numpy array,
+            label = labelT.detach().cpu().numpy()                                         # for a batch of 30 graphs, the array has shaüe [30, 2]
             predictions.append(pred) # append the prediction to the list of all predictions
             labels.append(label)    # append the label to the list of all labels
+
+            loss = crit(predT, labelT)  # compute the loss between output and label
+            loss_all += data.num_graphs * loss.item()
+            count += data.num_graphs
 
     # compute the prediction accuracy
     correct_pred = 0
@@ -82,7 +83,7 @@ def evaluate(model, val_loader):
             else:
                 correct_pred += 0
     acc = correct_pred / num_graphs
-    return acc , predictions, labels
+    return acc , predictions, labels, loss_all/count
 
 def plot_acc_sep(train_accs, val_accs, test_accs):
     x = range(len(train_accs))
@@ -136,11 +137,11 @@ def cross_val(batch_size, num_epochs, num_layers, num_input_features, hidden, de
             val_accs = []
 
             for epoch in range(num_epochs):
-                loss = train(model, train_loader, optimizer, crit) # train the model with the training_data
+                loss, batch_losses = train(model, train_loader, optimizer, crit) # train the model with the training_data
                 scheduler.step()
-                train_acc = evaluate(model, train_loader) # compute the accuracy for the training data
+                train_acc, _, _, _ = evaluate(model, train_loader, crit) # compute the accuracy for the training data
                 train_accs.append(train_acc)
-                val_acc = evaluate(model, val_loader)  # compute the accuracy for the validation data
+                val_acc, _, _, _ = evaluate(model, val_loader, crit)  # compute the accuracy for the validation data
                 val_accs.append(val_acc)
                 if epoch == num_epochs-1:
                     k_val.append(val_acc)
@@ -242,12 +243,12 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
 
         # compute training and test accuracy for every epoch
         for epoch in range(num_epochs):
-            loss = train(model, train_loader, optimizer, crit)  # train the model with the training_data
+            loss, batch_losses = train(model, train_loader, optimizer, crit)  # train the model with the training_data
             scheduler.step()
             losses[k].append(loss)
-            train_acc, _, _ = evaluate(model, train_loader)  # compute the accuracy for the training data
+            train_acc, _, _ ,_= evaluate(model, train_loader, crit)  # compute the accuracy for the training data
             train_accs[k].append(train_acc)
-            test_acc, predictions, labels = evaluate(model,test_loader)  # compute the accuracy for the test data
+            test_acc, predictions, labels, _= evaluate(model,test_loader, crit)  # compute the accuracy for the test data
             test_accs[k].append(test_acc)
             if epoch == num_epochs-1:
                 test_res.append(test_acc)
@@ -291,30 +292,43 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
 def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment):
     print("load data")
     # raw_data = DataConstructor()
+    #load the data lists and split them into train, val, test and train-augmented
     all_lists = load_obj(folder)
     all_train_lists = all_lists[0]
     all_val_lists = all_lists[1]
     all_test_lists = all_lists[2]
     all_train_aug_lists = all_lists[3]
 
-    val_res = []
+    val_res = [] # will contain the validation accuracy obtained in the last epoch (one value for every cross validation run)
 
-    train_accs = [[],[],[],[]]
-    val_accs = [[],[],[],[]]
-    losses = [[],[],[],[]]
-    preds = []
-    targets = []
+    train_accs = [[],[],[],[]] # every internal list will contain the training accuracy of every epoch of one single cross validation run
+    val_accs = [[],[],[],[]] # every internal list will contain the validation accuracy of every epoch of one single cross validation run
 
+    losses = [[],[],[],[]] # every internal list will contain the training loss of every epoch of one single cross validation run
+    val_losses = [[],[],[],[]] # every internal list will contain the validation loss of every epoch of one single cross validation run
+
+    batch_train_losses = [[],[],[],[]] # every internal list will contain the training loss of every batch of one single cross validation (CV) run
+    batch_val_losses = [[],[],[],[]] # every internal list will contain the validation loss of every batch of one single cross validation (CV) run
+
+    preds = [] # will contain the predictions of the last epoch of every CV run
+    targets = [] # will contain the labels of the last epoch of every CV run
+
+
+    # get the training and validation data lists
     for k in range(4):
         print("k:", k)
 
         # augment data by adding/subtracting small random values from node features
         if augment == True:
-            indices = list(range(0, len(all_train_lists[k]))) # get all original graphs
+            num_train = len(all_train_lists[k])
+            # num_train_aug = len(all_train_aug_lists[k])
+            indices = list(range(0, num_train)) # get all original graphs
 
             # randomly select n_aug augmented graphs
-            n_aug = 750
-            indices.extend(random.sample(range(len(all_train_lists[k]), len(all_train_aug_lists[k])),n_aug))
+            n_aug = 20
+            choice = random.sample(range(1,20), n_aug-1)
+            for j in choice:
+                indices.extend(random.sample(range(num_train*j, num_train*(j+1)),num_train))
 
             # create the train_data_list and val_data_list used for the DataLoader
             train_data_list = [all_train_aug_lists[k][i] for i in indices] # contains all original graphs plus num_aug augmented graphs
@@ -336,6 +350,8 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         # initialize val loader
         val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
 
+
+        # initialize the model
         print("initialize model", m)
         if m == "GCN":
             model = GCN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)  # initialize the model
@@ -357,15 +373,21 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         crit = torch.nn.MSELoss()  # define the loss function
 
 
-        # compute training and test accuracy for every epoch
+        # compute training and validation accuracy for every epoch
         for epoch in range(num_epochs):
-            loss = train(model, train_loader, optimizer, crit)  # train the model with the training_data
+            # train the model
+            train(model, train_loader, optimizer, crit)
             scheduler.step()
-            losses[k].append(loss)
-            train_acc , _, _= evaluate(model, train_loader)  # compute the accuracy for the training data
+
+            train_acc , _, _, loss = evaluate(model, train_loader, crit)  # compute the accuracy for the training data
             train_accs[k].append(train_acc)
-            val_acc, predictions, labels = evaluate(model,val_loader)  # compute the accuracy for the test data
+            losses[k].append(loss)
+
+
+            val_acc, predictions, labels, val_loss = evaluate(model,val_loader, crit)  # compute the accuracy for the test data
             val_accs[k].append(val_acc)
+            val_losses[k].append(val_loss)
+
 
             if epoch == num_epochs-1:
                 val_res.append(val_acc)
@@ -373,9 +395,10 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
                 targets.append(labels)
             if epoch % 1 == 0:
                 for param_group in optimizer.param_groups:
-                    print('Epoch: {:03d}, lr: {:.5f}, Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
+                    print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
 
     # plot the training and test accuracies
+    plt.rc("font", size=5)
     x = range(num_epochs)
     ltype = [":", "-.", "--","-"]
 
@@ -396,9 +419,11 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
     #
     plot_loss = plt.subplot(2, 1, 2)
     for k in range(4):
-        plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k])
-    plot_loss.set_title("train loss")
-    plt.tight_layout()
+        plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
+        plot_loss.plot(x, val_losses[k], color = (0,1,0), linestyle = ltype[k], label="val {}".format(k))
+    plot_loss.set_title("train and val loss")
+    plot_loss.legend()
+
     plt.show()
 
     for k in range(4):
@@ -575,16 +600,16 @@ if __name__ == "__main__":
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
-        if m == "GraphSAGE":
-            batch_size = 128
-            num_epochs = 15
-            num_layers = 2
-            num_input_features = 33
-            hidden = 136
-            lr = 0.005
-            lr_decay = 0.5
-            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
-            augment = True
+        # if m == "GraphSAGE":
+        #     batch_size = 64
+        #     num_epochs = 10
+        #     num_layers = 2
+        #     num_input_features = 33
+        #     hidden = 136
+        #     lr = 0.005
+        #     lr_decay = 0.5
+        #     step_size = 2  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+        #     augment = True
 
         if m == "GraphSAGEWithJK":
             # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
@@ -626,10 +651,10 @@ if __name__ == "__main__":
         #     num_epochs = 20
         #     num_layers = 3
         #     num_input_features = 33
-        #     hidden = 66
-        #     lr = 0.001
-        #     lr_decay = 0.5
-        #     step_size = 5
+        #     hidden = 132
+        #     lr = 0.005
+        #     lr_decay = 0.6
+        #     step_size = 3
         #     augment = True
 
         # if m == "GraphNN":
