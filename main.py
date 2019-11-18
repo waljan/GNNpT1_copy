@@ -24,7 +24,7 @@ from Save_Data_Objects import load_obj
 
 
 
-def train(model, train_loader, optimizer, crit):
+def train(model, train_loader, optimizer, crit, device):
     model.train()
     # iterate over all batches in the training data
     for data in train_loader:
@@ -41,7 +41,7 @@ def train(model, train_loader, optimizer, crit):
         optimizer.step() # adjust the parameters according to the gradient
 
 
-def evaluate(model, val_loader, crit):
+def evaluate(model, val_loader, crit, device):
     model.eval()
     predictions = []
     labels = []
@@ -137,11 +137,11 @@ def cross_val(batch_size, num_epochs, num_layers, num_input_features, hidden, de
             val_accs = []
 
             for epoch in range(num_epochs):
-                loss, batch_losses = train(model, train_loader, optimizer, crit) # train the model with the training_data
+                loss, batch_losses = train(model, train_loader, optimizer, crit, device) # train the model with the training_data
                 scheduler.step()
-                train_acc, _, _, _ = evaluate(model, train_loader, crit) # compute the accuracy for the training data
+                train_acc, _, _, _ = evaluate(model, train_loader, crit,device) # compute the accuracy for the training data
                 train_accs.append(train_acc)
-                val_acc, _, _, _ = evaluate(model, val_loader, crit)  # compute the accuracy for the validation data
+                val_acc, _, _, _ = evaluate(model, val_loader, crit, device)  # compute the accuracy for the validation data
                 val_accs.append(val_acc)
                 if epoch == num_epochs-1:
                     k_val.append(val_acc)
@@ -243,12 +243,12 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
 
         # compute training and test accuracy for every epoch
         for epoch in range(num_epochs):
-            loss, batch_losses = train(model, train_loader, optimizer, crit)  # train the model with the training_data
+            loss, batch_losses = train(model, train_loader, optimizer, crit, device)  # train the model with the training_data
             scheduler.step()
             losses[k].append(loss)
-            train_acc, _, _ ,_= evaluate(model, train_loader, crit)  # compute the accuracy for the training data
+            train_acc, _, _ ,_= evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
             train_accs[k].append(train_acc)
-            test_acc, predictions, labels, _= evaluate(model,test_loader, crit)  # compute the accuracy for the test data
+            test_acc, predictions, labels, _= evaluate(model,test_loader, crit, device)  # compute the accuracy for the test data
             test_accs[k].append(test_acc)
             if epoch == num_epochs-1:
                 test_res.append(test_acc)
@@ -319,7 +319,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         print("k:", k)
 
         # augment data by adding/subtracting small random values from node features
-        if augment == True:
+        if augment:
             num_train = len(all_train_lists[k])
             # num_train_aug = len(all_train_aug_lists[k])
             indices = list(range(0, num_train)) # get all original graphs
@@ -368,23 +368,23 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         elif m == "NMP":
             model = NMP(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden , nn=MLP(1,5)).to(device)
 
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # define the optimizer
-        scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.001)  # define the optimizer, weight_decay corresponds to L2 regularization
+        scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay) # learning rate decay
         crit = torch.nn.MSELoss()  # define the loss function
 
-
+        bad_epoch = 0
         # compute training and validation accuracy for every epoch
         for epoch in range(num_epochs):
             # train the model
-            train(model, train_loader, optimizer, crit)
+            train(model, train_loader, optimizer, crit, device)
             scheduler.step()
 
-            train_acc , _, _, loss = evaluate(model, train_loader, crit)  # compute the accuracy for the training data
+            train_acc , _, _, loss = evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
             train_accs[k].append(train_acc)
             losses[k].append(loss)
 
 
-            val_acc, predictions, labels, val_loss = evaluate(model,val_loader, crit)  # compute the accuracy for the test data
+            val_acc, predictions, labels, val_loss = evaluate(model,val_loader, crit, device)  # compute the accuracy for the test data
             val_accs[k].append(val_acc)
             val_losses[k].append(val_loss)
 
@@ -394,38 +394,49 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
                 preds.append(predictions)
                 targets.append(labels)
             if epoch % 1 == 0:
+                if val_acc<0.6:
+                    bad_epoch +=1
                 for param_group in optimizer.param_groups:
                     print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
+            if bad_epoch == 5:
+                val_res.append(val_acc)
+                print("bad params, acc:", mean(val_res))
+                return(mean(val_res), True)
+    ####################################################################
+    ###################################################################
 
     # plot the training and test accuracies
-    plt.rc("font", size=5)
-    x = range(num_epochs)
-    ltype = [":", "-.", "--","-"]
 
-    plt.subplot(2, 1, 1)
-    for k in range(4):
-        plt.plot(x, train_accs[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
-        plt.plot(x, val_accs[k], color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
-        plt.ylim(0.5, 1)
-
-    plt.legend()
-    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
-        title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
-        plt.title(title)
-    if folder == "pT1_dataset/graphs/base-dataset/":
-        title = "base-dataset, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
-        plt.title(title)
-
+    ####################################################################
+    # plt.rc("font", size=5)
+    # x = range(num_epochs)
+    # ltype = [":", "-.", "--","-"]
     #
-    plot_loss = plt.subplot(2, 1, 2)
-    for k in range(4):
-        plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
-        plot_loss.plot(x, val_losses[k], color = (0,1,0), linestyle = ltype[k], label="val {}".format(k))
-    plot_loss.set_title("train and val loss")
-    plot_loss.legend()
-
-    plt.show()
-
+    # plt.subplot(2, 1, 1)
+    # for k in range(4):
+    #     plt.plot(x, train_accs[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
+    #     plt.plot(x, val_accs[k], color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
+    #     plt.ylim(0.5, 1)
+    #
+    # plt.legend()
+    # if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+    #     title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
+    #     plt.title(title)
+    # if folder == "pT1_dataset/graphs/base-dataset/":
+    #     title = "base-dataset, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
+    #     plt.title(title)
+    #
+    # #
+    # plot_loss = plt.subplot(2, 1, 2)
+    # for k in range(4):
+    #     plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
+    #     plot_loss.plot(x, val_losses[k], color = (0,1,0), linestyle = ltype[k], label="val {}".format(k))
+    # plot_loss.set_title("train and val loss")
+    # plot_loss.legend()
+    #
+    # plt.show()
+    #######################################################################
+    ######################################################################
     for k in range(4):
         tps = 0
         tns = 0
@@ -455,7 +466,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         print("false_negatives:", fns)
 
     print("average val accuracy:", mean(val_res))
-    return(mean(val_res))
+    return(mean(val_res), False)
 
 
 
