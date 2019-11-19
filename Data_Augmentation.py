@@ -17,26 +17,26 @@ def augment_every_nd(train_data_list, n=4):
     """
     train_data_list_aug = copy.deepcopy(train_data_list)
     c = 0
-    for i in range(n):  # how often the augmentation is done
-        r_factors = np.random.rand(101, 101)  # create array of random numbers
+    for i in range(n):                                              # how often the augmentation is done
+        r_factors = np.random.rand(101, 101)                        # create array of random numbers
         train_data_list_cp = copy.deepcopy(train_data_list)
-        for graph in range(len(train_data_list)):  # iterate over every graph
-            for nd in range(len(train_data_list[graph].x)):  # iterate over every node
+        for graph in range(len(train_data_list)):                   # iterate over every graph
+            for nd in range(len(train_data_list[graph].x)):         # iterate over every node
                 for f in range(len(train_data_list[graph].x[nd])):  # iterate over every node feature
-                    choice = r_factors[f, c]  # draw random number to determine whether to add or subtract
+                    choice = r_factors[f, c]                        # draw random number to determine whether to add or subtract
                     r_factor = r_factors[
-                        c + 1, f]  # draw a random number to determine the value that will be added/subtracted
+                        c + 1, f]                                   # draw a random number to determine the value that will be added/subtracted
                     r_factor2 = r_factors[c, c + 1]
                     c += 1
                     if c == 100:
                         c = 0
                     if choice >= 0.5:
                         train_data_list_cp[graph].x[nd][
-                            f] += r_factor2 * r_factor  # add a small random value to the feature "f" of node "nd" of graph "graph"
+                            f] += r_factor2 * r_factor              # add a small random value to the feature "f" of node "nd" of graph "graph"
                     if choice < 0.5:
                         r_factor = 1 - r_factor
                         train_data_list_cp[graph].x[nd][
-                            f] -= r_factor2 * r_factor  # subtract a small random value to the feature "f" of node "nd" of graph "graph"
+                            f] -= r_factor2 * r_factor              # subtract a small random value to the feature "f" of node "nd" of graph "graph"
 
             train_data_list_aug.append(train_data_list_cp[graph])
 
@@ -60,15 +60,15 @@ def augment(train_data_list, n=2):
     train_data_list_cp = copy.deepcopy(train_data_list)
 
     for i in range(n-1):
-        for graph in range(len(train_data_list)):  # iterate over every graph
+        for graph in range(len(train_data_list)):                       # iterate over every graph
             num_nodes = len(train_data_list[graph].x)
-            r_nd = np.random.randint(0, num_nodes, (np.random.randint(1, num_nodes, 1))) # get the indices of a random number of nodes
+            r_nd = np.random.randint(0, num_nodes, (np.random.randint(1, num_nodes, 1)))    # get the indices of a random number of nodes
 
             for nd in r_nd: # iterate over every node
                 num_f = len(train_data_list[graph].x[nd])
-                r_f = np.random.randint(0, num_f, (np.random.randint(1, num_f, 1))) # get the indices of a random number of features
+                r_f = np.random.randint(0, num_f, (np.random.randint(1, num_f, 1)))         # get the indices of a random number of features
                 for f in r_f:
-                    train_data_list_cp[graph].x[nd][f] += np.random.normal(0,1)
+                    train_data_list_cp[graph].x[nd][f] += np.random.normal(0,1)             # add a small value drawn from a standard normal distribution
 
 
             train_data_list_aug.append(train_data_list_cp[graph])
