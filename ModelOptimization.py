@@ -22,7 +22,7 @@ def hyperopt(search_space):
         val_acc = []
         for it in range(3):
             print("iteration:", it)
-            res, bool = train_and_val(**params)
+            res, bool = train_and_val(**params, opt = True)
             val_acc.append(res)
             if bool:
                 score = mean(val_acc)
@@ -38,7 +38,7 @@ def hyperopt(search_space):
         fn = objective_function,               # fn is the function that is to be minimize
         space = search_space,
         algo = tpe.suggest,             # Search algorithm: Tree of Parzen estimators
-        max_evals = 4,
+        max_evals = 150,
         trials = trials,
         rstate=np.random.RandomState(111))
     print("done")
@@ -80,7 +80,8 @@ def hyperopt(search_space):
         best_param["lr_decay"],
         m,
         folder,
-        augment
+        augment,
+        opt = True
     )
 
     print("")
@@ -114,52 +115,9 @@ if __name__ == "__main__":
     results = hyperopt(search_space)
     print(type(results))
 
-# # data
-# folder = "pT1_dataset/graphs/base-dataset/"
-# all_lists = load_obj(folder)
-# all_train_lists = all_lists[0]
-# all_val_lists = all_lists[1]
-#
-# # the objective function takes a set of hyperparameters as input and outputs a score
-# def objective_function(params, all_train_lists, all_val_lists):
-#
-#
-#     batch_size = 32
-#     device = "cuda"
-#
-#     for iter in range(10):
-#     for k in range(4):      # 4 fold cross validation
-#         train_data_list = all_train_lists[k]
-#         val_data_list = all_val_lists[k]
-#
-#         model = GraphSAGE(
-#             num_layers=params["num_layers"],
-#             num_input_features=params["num_input_features"],
-#             hidden=params["hidden"]
-#         ).to(device)
-#
-#         optimizer = torch.optim.Adam(
-#             model.parameters(),
-#             lr=params["lr"],
-#             weight_decay=0.001)  # define the optimizer, weight_decay corresponds to L2 regularization
-#
-#         scheduler = StepLR(optimizer, step_size=params["step_size"], gamma=params["lr_decay"])  # learning rate decay
-#
-#         crit = torch.nn.MSELoss()
-#
-#         # initialize train loader
-#         train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
-#         # initialize val loader
-#         val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
-#
-#         for epoch in range(params["num_epochs"]):
-#             # train the model
-#             train(model, train_loader, optimizer, crit)
-#             scheduler.step()
-#
-#             train_acc, _, _, loss = evaluate(model, train_loader, crit)  # compute the accuracy for the training data
-#
-#             val_acc, predictions, labels, val_loss = evaluate(model, val_loader,
-#                                                               crit)  # compute the accuracy for the test data
-#             val_accs[k].append(val_acc)
-#             val_losses[k].append(val_loss)
+
+# 150 iterations for GraphSage on base-dataset
+# Score best parameters:  0.9550437288809382
+# Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 33.0, 'lr': 0.002000837078491707, 'lr_decay': 0.9054101608439347, 'm': 0, 'num_epochs': 30.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 10.0}
+# Time elapsed:  3047.017801761627
+# Parameter combinations evaluated:  10
