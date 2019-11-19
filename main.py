@@ -289,7 +289,7 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
 ###############################
 
 
-def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment):
+def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, opt=False):
     print("load data")
     # raw_data = DataConstructor()
     #load the data lists and split them into train, val, test and train-augmented
@@ -408,62 +408,65 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
     # plot the training and test accuracies
 
     ####################################################################
-    # plt.rc("font", size=5)
-    # x = range(num_epochs)
-    # ltype = [":", "-.", "--","-"]
-    #
-    # plt.subplot(2, 1, 1)
-    # for k in range(4):
-    #     plt.plot(x, train_accs[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
-    #     plt.plot(x, val_accs[k], color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
-    #     plt.ylim(0.5, 1)
-    #
-    # plt.legend()
-    # if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
-    #     title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
-    #     plt.title(title)
-    # if folder == "pT1_dataset/graphs/base-dataset/":
-    #     title = "base-dataset, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
-    #     plt.title(title)
-    #
-    # #
-    # plot_loss = plt.subplot(2, 1, 2)
-    # for k in range(4):
-    #     plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
-    #     plot_loss.plot(x, val_losses[k], color = (0,1,0), linestyle = ltype[k], label="val {}".format(k))
-    # plot_loss.set_title("train and val loss")
-    # plot_loss.legend()
-    #
-    # plt.show()
+    if not opt:
+        plt.rc("font", size=5)
+        x = range(num_epochs)
+        ltype = [":", "-.", "--","-"]
+
+        plt.subplot(2, 1, 1)
+        for k in range(4):
+            plt.plot(x, train_accs[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
+            plt.plot(x, val_accs[k], color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
+            plt.ylim(0.5, 1)
+
+        plt.legend()
+        if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+            title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
+            plt.title(title)
+        if folder == "pT1_dataset/graphs/base-dataset/":
+            title = "base-dataset, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
+            plt.title(title)
+
+        #
+        plot_loss = plt.subplot(2, 1, 2)
+        for k in range(4):
+            plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
+            plot_loss.plot(x, val_losses[k], color = (0,1,0), linestyle = ltype[k], label="val {}".format(k))
+        plot_loss.set_title("train and val loss")
+        plot_loss.legend()
+
+        plt.show()
     #######################################################################
+
+    # compute number of false positives, false negatives, true positives and true negatives
     ######################################################################
-    for k in range(4):
-        tps = 0
-        tns = 0
-        fps = 0
-        fns = 0
-        print("k =",k,"-------------")
-        for pred_batch , target_batch in zip(preds[k], targets[k]):
-            pr = np.asarray(pred_batch)
-            pr = pr[:,0]
+        for k in range(4):
+            tps = 0
+            tns = 0
+            fps = 0
+            fns = 0
+            print("k =",k,"-------------")
+            for pred_batch , target_batch in zip(preds[k], targets[k]):
+                pr = np.asarray(pred_batch)
+                pr = pr[:,0]
 
-            tr = np.asarray(target_batch)
-            tr = tr[:,0]
+                tr = np.asarray(target_batch)
+                tr = tr[:,0]
 
-            for p, t in zip(pr, tr):
-                if p == 1 and t == 1:
-                    tps += 1
-                if p == 1 and t == 0:
-                    fps += 1
-                if p == 0 and t == 0:
-                    tns += 1
-                if p == 0 and t == 1:
-                    fns += 1
+                for p, t in zip(pr, tr):
+                    if p == 1 and t == 1:
+                        tps += 1
+                    if p == 1 and t == 0:
+                        fps += 1
+                    if p == 0 and t == 0:
+                        tns += 1
+                    if p == 0 and t == 1:
+                        fns += 1
 
-        print("true positives:", tps)
-        print("true negatives:", tns)
-        print("false positives:", fps)
-        print("false_negatives:", fns)
+            print("true positives:", tps)
+            print("true negatives:", tns)
+            print("false positives:", fps)
+            print("false_negatives:", fns)
 
     print("average val accuracy:", mean(val_res))
     return(mean(val_res), False)
