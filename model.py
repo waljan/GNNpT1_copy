@@ -15,18 +15,20 @@ class GCN(torch.nn.Module):
     """
     Graph Convolutional Neural Network similar to the one introduced by Kipf and Welling.
     https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gcn.py
+
+    Uses the graph convolutional operator from the “Semi-supervised Classification with Graph Convolutional Networks” paper
     """
     def __init__(self, num_layers, num_input_features, hidden):
         super(GCN, self).__init__()
-        self.conv1 = GCNConv(num_input_features, hidden) #GCNconv layer 6 feature-channels as input and 6 as output
+        self.conv1 = GCNConv(num_input_features, hidden) # GCNconv layer
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
             self.convs.append(GCNConv(hidden, hidden))  # remaining GCNconv layers
-        self.lin1 = Linear(hidden, hidden)  #linear layer
-        self.lin2 = Linear(hidden, 2)       #linear layer, output layer, 2 classes
+        self.lin1 = Linear(hidden, hidden)              # linear layer
+        self.lin2 = Linear(hidden, 2)                   # linear layer, output layer, 2 classes
         self.reset_parameters()
 
-    def reset_parameters(self):     #reset all conv and linear layers except the first GCNConv layer
+    def reset_parameters(self):     # reset all conv and linear layers
         print("reset parameters")
         self.conv1.reset_parameters()
         for conv in self.convs:
@@ -35,23 +37,49 @@ class GCN(torch.nn.Module):
         self.lin2.reset_parameters()
 
     def forward(self, data):
-        x, edge_index, batch = data.x, data.edge_index, data.batch
+        # data: Batch(batch=[num_nodes_in_batch],
+        #               edge_attr=[2*num_nodes_in_batch,num_edge_features_per_edge],
+        #               edge_index=[2,2*num_nodes_in_batch],
+        #               pos=[num_nodes_in_batch,2],
+        #               x=[num_nodes_in_batch, num_input_features_per_node],
+        #               y=[num_graphs_in_batch, num_classes]
+        # example: Batch(batch=[2490], edge_attr=[4980,1], edge_index=[2,4980], pos=[2490,2], x=[2490,33], y=[32,2]
 
-        #graph convolutions and relu activation
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+        # x.shape: torch.Size([num_nodes_in_batch, num_input_features_per_node])
+        # edge_index.shape: torch.Size([2, 2*num_nodes_in_batch])
+        # batch.shape: torch.Size([num_nodes_in_batch])
+        # example:  x.shape = troch.Size([2490,33])
+        #           edge_index.shape = torch.Size([2,4980])
+        #           batch.shape = torch.Size([2490])
+
+        # graph convolutions and relu activation
         x = F.relu(self.conv1(x, edge_index))
+        # x.shape:  torch.Size([num_nodes_in_batch, hidden])
+        # example:  x.shape = torch.Size([2490, 66])
+
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
+        # x.shape:  torch.Size([num_nodes_in_batch, hidden])
+        # example:  x.shape = torch.Size([2490, 66])
 
         # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
-        # if there are 30 graphs in the batch and the feature vector has length 6, the resulting x has shape [30, 6]
+        # if there are 30 graphs in the batch and the feature vector has length hidden, the resulting x has shape [30, hidden]
         x = global_mean_pool(x, batch)
+        # x.shape:  torch.Size([num_graphs_in_batch, hidden)
+        # example:  x.shape = torch.Size([32, 66])
 
-        #linear layers, activation function, dropout and softmax
+        # linear layers, activation function, dropout and softmax
         x = F.relu(self.lin1(x))
+        # x.shape:  torch.Size([num_graphs_in_batch, hidden)
+        # example:  x.shape = torch.Size([32, 66])
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
+        # x.shape:  torch.Size([num_graphs_in_batch, num_classes)
+        # example:  x.shape = torch.Size([32, 2])
+
         # output = F.log_softmax(x, dim=-1)
-        output = F.log_softmax(x, dim=-1) #get output between 0 and 1
+        output = F.log_softmax(x, dim=-1)           # get output between 0 and 1
         return output
 
     def __repr__(self):
@@ -59,17 +87,23 @@ class GCN(torch.nn.Module):
         return self.__class__.__name__
 
 class GCNWithJK(torch.nn.Module):
-    # Graph Convolutional Neural Network similar to the one introduced by Kipf and Welling.
-    # https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gcn.py
-    # jumping Knowledge (Xu et al.
+    """
+    Graph Convolutional Neural Network similar to the one introduced by Kipf and Welling.
+    https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/gcn.py
+    jumping Knowledge (Xu et al.)
+
+    Uses the graph convolutional operator from the “Semi-supervised Classification with Graph Convolutional Networks” paper
+    """
+
     def __init__(self, num_layers, num_input_features, hidden, mode='cat'):
         super(GCNWithJK, self).__init__()
         self.conv1 = GCNConv(num_input_features, hidden)
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
             self.convs.append(GCNConv(hidden, hidden))
+
         self.jump = JumpingKnowledge(mode)
-        if mode == 'cat':
+        if mode == 'cat': # concatenation
             self.lin1 = Linear(num_layers * hidden, hidden)
         else:
             self.lin1 = Linear(hidden, hidden)
@@ -84,17 +118,46 @@ class GCNWithJK(torch.nn.Module):
         self.lin2.reset_parameters()
 
     def forward(self, data):
+        # data: Batch(batch=[num_nodes_in_batch],
+        #               edge_attr=[2*num_nodes_in_batch,num_edge_features_per_edge],
+        #               edge_index=[2,2*num_nodes_in_batch],
+        #               pos=[num_nodes_in_batch,2],
+        #               x=[num_nodes_in_batch, num_input_features_per_node],
+        #               y=[num_graphs_in_batch, num_classes]
+        # example: Batch(batch=[2490], edge_attr=[4980,1], edge_index=[2,4980], pos=[2490,2], x=[2490,33], y=[32,2]
+
         x, edge_index, batch = data.x, data.edge_index, data.batch
+        # x.shape: torch.Size([num_nodes_in_batch, num_input_features_per_node])
+        # edge_index.shape: torch.Size([2, 2*num_nodes_in_batch])
+        # batch.shape: torch.Size([num_nodes_in_batch])
+        # example:  x.shape = troch.Size([2490,33])
+        #           edge_index.shape = torch.Size([2,4980])
+        #           batch.shape = torch.Size([2490])
+
+
         x = F.relu(self.conv1(x, edge_index))
+        # x.shape: torch.Size([num_nodes_in_batch, hidden])
+        # example:  x.shape = troch.Size([2490,66])
         xs = [x]
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            xs += [x]
-        x = self.jump(xs)
+            xs += [x]  # xs: list containing layer-wise representations
+        x = self.jump(xs) # aggregate information accross different layers
+        # x.shape: torch.Size([num_nodes_in_batch, num_layers * hidden])
+        # example: x.shape = torch.Size([2490, 2*66])
+
         x = global_mean_pool(x, batch)
+        # x.shape: torch.Size([num_graphs_in_batch, 2*hidden])
+        # example: x.shape = torch.Size([32, 2*66])
+
         x = F.relu(self.lin1(x))
+        # x.shape: torch.Size([num_graphs_in_batch, hidden])
+        # example: x.shape = torch.Size([32, 66])
+
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
+        # x.shape: torch.Size([num_graphs_in_batch, num_classes])
+        # example: x.shape = torch.Size([32, 2])
         return F.log_softmax(x, dim=-1)
 
     def __repr__(self):
@@ -102,15 +165,18 @@ class GCNWithJK(torch.nn.Module):
 
 
 class GraphSAGE(torch.nn.Module):
-    # https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/graph_sage.py
+    """
+    https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/graph_sage.py
+    Uses the GraphSAGE operator from the “Inductive Representation Learning on Large Graphs” paper
+    """
     def __init__(self, num_input_features, num_layers, hidden):
         super(GraphSAGE, self).__init__()
-        self.conv1 = SAGEConv(num_input_features, hidden)
+        self.conv1 = SAGEConv(num_input_features, hidden)       # SAGEConv layer
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
-            self.convs.append(SAGEConv(hidden, hidden))
-        self.lin1 = Linear(hidden, hidden)
-        self.lin2 = Linear(hidden, 2)
+            self.convs.append(SAGEConv(hidden, hidden))         # SAGEConv layers
+        self.lin1 = Linear(hidden, hidden)                      # linear layer
+        self.lin2 = Linear(hidden, 2)                           # linear layer
 
     def reset_parameters(self):
         self.conv1.reset_parameters()
@@ -120,21 +186,56 @@ class GraphSAGE(torch.nn.Module):
         self.lin2.reset_parameters()
 
     def forward(self, data):
+        # data: Batch(batch=[num_nodes_in_batch],
+        #               edge_attr=[2*num_nodes_in_batch,num_edge_features_per_edge],
+        #               edge_index=[2,2*num_nodes_in_batch],
+        #               pos=[num_nodes_in_batch,2],
+        #               x=[num_nodes_in_batch, num_input_features_per_node],
+        #               y=[num_graphs_in_batch, num_classes]
+        # example: Batch(batch=[2490], edge_attr=[4980,1], edge_index=[2,4980], pos=[2490,2], x=[2490,33], y=[32,2]
+
         x, edge_index, batch = data.x, data.edge_index, data.batch
+        # x.shape: torch.Size([num_nodes_in_batch, num_input_features_per_node])
+        # edge_index.shape: torch.Size([2, 2*num_nodes_in_batch])
+        # batch.shape: torch.Size([num_nodes_in_batch])
+        # example:  x.shape = troch.Size([2490,33])
+        #           edge_index.shape = torch.Size([2,4980])
+        #           batch.shape = torch.Size([2490])
+
         x = F.relu(self.conv1(x, edge_index))
+        # x.shape: torch.Size([num_nodes_in_batch, hidden])
+        # example:  x.shape = troch.Size([2490,66])
+
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
+        # x.shape: torch.Size([num_nodes_in_batch, hidden])
+        # example:  x.shape = troch.Size([2490,66])
+
         x = global_mean_pool(x, batch)
+        # x.shape:  torch.Size([num_graphs_in_batch, hidden)
+        # example:  x.shape = torch.Size([32, 66])
+
         x = F.relu(self.lin1(x))
+        # x.shape:  torch.Size([num_graphs_in_batch, hidden)
+        # example:  x.shape = torch.Size([32, 66])
+
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
+        # x.shape:  torch.Size([num_graphs_in_batch, num_classes)
+        # example:  x.shape = torch.Size([32, 2])
         return F.log_softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
 
 class GraphSAGEWithJK(torch.nn.Module):
-    # https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/graph_sage.py
+    """
+    Uses the GraphSAGE operator from the “Inductive Representation Learning on Large Graphs” paper
+
+    https://github.com/rusty1s/pytorch_geometric/blob/master/benchmark/kernel/graph_sage.py
+
+    Jumping Knowledge
+    """
     def __init__(self, num_input_features, num_layers, hidden, mode='cat'):
         super(GraphSAGEWithJK, self).__init__()
         self.conv1 = SAGEConv(num_input_features, hidden)
