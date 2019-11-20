@@ -15,7 +15,7 @@ import copy
 
 
 #own modules
-from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, GraphNN, NMP
+from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, GATNet, GraphNN, NMP
 # from GraphConvolutions import OwnGConv
 from Dataset_construction import DataConstructor
 from MLP import MLP
@@ -99,102 +99,6 @@ def plot_train_test(train_accs, test_accs):
     plt.plot(x, test_accs, "y", label="test_accuracy")
     plt.legend()
     plt.show()
-
-
-def cross_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder):
-        # print("load data")
-        raw_data = DataConstructor()
-        k_val = []
-        # initialize the model
-        for k in range(4):
-            print("k:", k)
-            train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, k=k) # split the data into train val and test
-            print("train size:", len(train_data_list), "val size:", len(val_data_list))
-            # initialize the data loaders
-            train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
-            val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
-
-            # initialize model
-            print("initialize model", m)
-            if m == "GCN":
-                model = GCN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(
-                    device)  # initialize the model
-            elif m == "GCNWithJK":
-                model = GCNWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden,
-                                  mode="cat").to(device)  # initialize the model
-            elif m == "GraphSAGE":
-                model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(
-                    device)
-            elif m == "GraphSAGEWithJK":
-                model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden,
-                                        mode="cat").to(device)
-
-            optimizer = torch.optim.Adam(model.parameters(), lr=lr) # define the optimizer
-            scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
-            crit = torch.nn.MSELoss()   # define the loss function
-
-            train_accs = []
-            val_accs = []
-
-            for epoch in range(num_epochs):
-                loss, batch_losses = train(model, train_loader, optimizer, crit, device) # train the model with the training_data
-                scheduler.step()
-                train_acc, _, _, _ = evaluate(model, train_loader, crit,device) # compute the accuracy for the training data
-                train_accs.append(train_acc)
-                val_acc, _, _, _ = evaluate(model, val_loader, crit, device)  # compute the accuracy for the validation data
-                val_accs.append(val_acc)
-                if epoch == num_epochs-1:
-                    k_val.append(val_acc)
-                for param_group in optimizer.param_groups:
-                    # print("learning_rate epoch ", epoch, ":", param_group["lr"])
-                    print('Epoch: {:03d}, Lr: {:.5f}, Loss: {:.5f}, Train Acc: {:.5f}, Val Acc: {:.5f}'.format(epoch, param_group["lr"],  loss, train_acc, val_acc))
-        print("average validation accuracy:", mean(k_val))
-        return (mean(k_val))
-
-
-
-
-
-def param_search(m, folder):
-    batch_size_vec = [8,16, 32, 64]
-    num_epochs_vec = [15, 30, 45, 60, 80]
-    num_layers_vec = [2, 3, 4]
-    num_input_features_vec = [4]
-    hidden_vec = [4, 8, 16]
-    lr_vec = [0.05, 0.01, 0.005, 0.001]
-    lr_decay_vec = [1, 0.97, 0.94, 0.90, 0.8]
-    step_size_vec = [1, 2]
-    k_vec = [0, 1, 2, 3]
-
-    batch_size_vec = [32]
-    num_epochs_vec = [30]
-    num_layers_vec = [1, 2, 3, 4 ,5]
-    num_input_features_vec = [4]
-    hidden_vec = [8, 16, 32, 64]
-    lr_vec = [0.015]
-    lr_decay_vec = [0.97]
-    step_size_vec = [1]
-    device = torch.device("cuda")
-    params = []
-    c=1
-    for batch_size in batch_size_vec:
-        for num_epochs in num_epochs_vec:
-            for num_layers in num_layers_vec:
-                for num_input_features in num_input_features_vec:
-                    for hidden in hidden_vec:
-                        for lr in lr_vec:
-                            for lr_decay in lr_decay_vec:
-                                for step_size in step_size_vec:
-
-                                    print("progress:", c/(4*(len(batch_size_vec) * len(num_epochs_vec) * len(num_layers_vec) * len(num_input_features_vec) * len(hidden_vec)* len(lr_vec)* len(lr_decay_vec) * len(step_size_vec))))
-                                    c+=1
-
-                                    avg_val = cross_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device,
-                                          lr, step_size, lr_decay, m, folder)
-                                    params.append([m, batch_size, num_epochs, num_layers, num_input_features, hidden, lr, step_size, lr_decay, "Adam", avg_val])
-    return(params)
-
-
 
 
 def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder):
@@ -363,10 +267,13 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
         elif m == "OwnGraphNN":
             model = OwnGraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
+        elif m == "GATNet":
+            model = GATNet(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
+
         elif m == "GraphNN":
             model = GraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
         elif m == "NMP":
-            model = NMP(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden , nn=MLP(1,5)).to(device)
+            model = NMP(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden , nn=MLP).to(device)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.001)  # define the optimizer, weight_decay corresponds to L2 regularization
         scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay) # learning rate decay
@@ -418,7 +325,9 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             plt.plot(x, train_accs[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
             plt.plot(x, val_accs[k], color = (0, 1, 0), linestyle = ltype[k], label="val {}".format(k))
             plt.ylim(0.5, 1)
-
+        plt.plot(x, np.mean(np.asarray(train_accs), axis=0), color=(0,0,0), label="train avg")
+        plt.plot(x, np.mean(np.asarray(val_accs), axis=0), color=(0,0,1), label="val avg")
+        plt.xticks(np.arange(min(x), max(x) + 1, 1.0))
         plt.legend()
         if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
             title = "paper-graphs, " + m + "   Validation accuracy: " + str(round(100*mean(val_res),2)) + "%"
@@ -432,9 +341,11 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
         for k in range(4):
             plot_loss.plot(x, losses[k], color = (1, 0, 0), linestyle = ltype[k], label="train {}".format(k))
             plot_loss.plot(x, val_losses[k], color = (0,1,0), linestyle = ltype[k], label="val {}".format(k))
+        plt.plot(x, np.mean(np.asarray(losses), axis=0), color=(0,0,0), label="train avg")
+        plt.plot(x, np.mean(np.asarray(val_losses), axis=0), color=(0,0,1), label="val avg")
         plot_loss.set_title("train and val loss")
         plot_loss.legend()
-
+        plt.xticks(np.arange(min(x), max(x) + 1, 1.0))
         plt.show()
     #######################################################################
 
@@ -496,8 +407,12 @@ if __name__ == "__main__":
     m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
     # m = "OwnGraphNN"
-    # m = "GraphNN"
-    # m = "NMP"
+    # m = "GATNet"
+
+    # m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
+
+    # m = "GraphNN" # no suitable hyperparameters found so far
+
 
 
 
@@ -649,14 +564,25 @@ if __name__ == "__main__":
             step_size = 10
             augment = False
 
-        if m == "NMP": ######################## not yet working
+        if m == "GATNet":
             batch_size = 32
             num_epochs = 15
             num_layers = 2
             num_input_features = 33
-            hidden = 132
+            hidden = 66
             lr = 0.005
             lr_decay = 0.5
+            step_size = 4
+            augment = False
+
+        if m == "NMP": ######################## works, but NN for one  edge feature doesnt make sense
+            batch_size = 32
+            num_epochs = 20
+            num_layers = 2
+            num_input_features = 33
+            hidden = 66
+            lr = 0.005
+            lr_decay = 0.9
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
@@ -671,18 +597,18 @@ if __name__ == "__main__":
         #     step_size = 3
         #     augment = True
 
-        # if m == "GraphNN":
-        #     # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
-        #     # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
-        #     batch_size = 32
-        #     num_epochs = 15
-        #     num_layers = 3
-        #     num_input_features = 33
-        #     hidden = 66
-        #     lr = 0.01
-        #     lr_decay = 0.2
-        #     step_size = 4
-        #     augment = True
+        if m == "GraphNN":
+            # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
+            # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 3
+            num_input_features = 33
+            hidden = 132
+            lr = 0.001
+            lr_decay = 0.50
+            step_size = 4
+            augment = False
 
  ############ base dataset: ##########################################
             # 93-95% depending on model and initialization
