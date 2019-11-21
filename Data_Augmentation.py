@@ -43,7 +43,7 @@ def augment_every_nd(train_data_list, n=4):
     return train_data_list_aug
 
 
-def augment(train_data_list, n=2):
+def augment(train_data_list, n=2, sd=1):
     """
     augments the data set by randomly adding small values (drawn from normal distribution with mean 0 and sd=1) to a random number of features of randomly selected nodes
 
@@ -53,6 +53,7 @@ def augment(train_data_list, n=2):
 
     :param train_data_list: list of graph data objects
     :param n: factor by which the dataset will be increased
+    :param sd: standard deviation of the normal distribution
     :return: train_data_list_aug: list of graph data objects containing the original and the changed graphs
     """
 
@@ -62,13 +63,13 @@ def augment(train_data_list, n=2):
     for i in range(n-1):
         for graph in range(len(train_data_list)):                       # iterate over every graph
             num_nodes = len(train_data_list[graph].x)
-            r_nd = np.random.randint(0, num_nodes, (np.random.randint(1, num_nodes, 1)))    # get the indices of a random number of nodes
+            r_nd_idx = np.random.randint(0, num_nodes, (np.random.randint(1, num_nodes, 1)))    # get the indices of a random number of nodes
 
-            for nd in r_nd: # iterate over every node
-                num_f = len(train_data_list[graph].x[nd])
+            for nd_idx in r_nd_idx: # iterate over every node
+                num_f = len(train_data_list[graph].x[nd_idx])
                 r_f = np.random.randint(0, num_f, (np.random.randint(1, num_f, 1)))         # get the indices of a random number of features
                 for f in r_f:
-                    train_data_list_cp[graph].x[nd][f] += np.random.normal(0,1)             # add a small value drawn from a standard normal distribution
+                    train_data_list_cp[graph].x[nd_idx][f] += np.random.normal(0,sd)             # add a small value drawn from a normal distribution with mean 0 and standard deviation sd
 
 
             train_data_list_aug.append(train_data_list_cp[graph])
