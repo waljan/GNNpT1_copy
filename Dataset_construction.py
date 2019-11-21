@@ -180,9 +180,9 @@ if __name__ == "__main__":
 
     raw_data= DataConstructor() # initialize instance
     train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder) # get data lists for train, val and test
-    print(len(train_data_list))
-    print(train_data_list[0])
-    print("feature vec:",train_data_list[0].x[0])
+    print(len(train_data_list))         # how many graphs are inside the train_data_list
+    print(train_data_list[0])           # data object of first graph graph
+    print("feature vec:",train_data_list[0].x[0])   # feature vec of first node
     print(raw_data.get_graph(folder, filename))
 
     # Dataloader
@@ -200,40 +200,40 @@ if __name__ == "__main__":
     # plot feature distributions (normal and abnormal glands together)
     plt.rc("font", size=5)  # change font size
 
-    for f in range(len(train_data_list[0].x[0])):
-        f_vec = []
+    for f_idx in range(train_data_list[0].num_node_features):           # get indices of every feature
+        f_vec = []                                              # f_vec will contain the values of a particular feature of every node and graph
 
-        for graph in train_data_list:
-            for nd in range(len(graph.x)):
-                f_vec.append(graph.x[nd][f].item())
+        for graph in train_data_list:                           # iterate over every graph in train_data_list
+            for nd_idx in range(graph.num_nodes):                  # get indices of every node
+                f_vec.append(graph.x[nd_idx][f_idx].item())
 
-        plt.subplot(4, len(train_data_list[0].x[0])//4+1, f+1)
+        plt.subplot(4, len(train_data_list[0].x[0])//4+1, f_idx+1)
         plt.hist(f_vec, density=True)
-        plt.title("f"+ str(f) + "  std: " + str(stdev(f_vec))[:4] + "  mean: " + str(mean(f_vec))[:4])
+        plt.title("f"+ str(f_idx) + "  std: " + str(stdev(f_vec))[:4] + "  mean: " + str(mean(f_vec))[:4])
 
     # plt.tight_layout()
     plt.show()
 
     # plot feature distributions (normal vs abnormal glands)
-    for f in range(len(train_data_list[0].x[0])):
+    for f_idx in range(train_data_list[0].num_node_features):
         f_vec_normal = []
         f_vec_abnormal = []
 
         for graph in train_data_list:
 
             if graph.y[0][0].item() == 1:  # abnormal
-                for nd in range(len(graph.x)):
-                    f_vec_abnormal.append(graph.x[nd][f])
+                for nd_idx in range(graph.num_nodes):
+                    f_vec_abnormal.append(graph.x[nd_idx][f_idx])
 
             elif graph.y[0][0].item() == 0: #normal
-                for nd in range(len(graph.x)):
-                    f_vec_normal.append(graph.x[nd][f])
+                for nd_idx in range(graph.num_nodes):
+                    f_vec_normal.append(graph.x[nd_idx][f_idx])
 
-        plt.subplot(4, len(train_data_list[0].x[0])//4+1, f+1)
+        plt.subplot(4, train_data_list[0].num_node_features//4+1, f_idx+1)
         plt.hist(f_vec_normal, alpha=0.5, label="n", density=True)
         plt.hist(f_vec_abnormal, alpha=0.5, label="a", density=True)
         plt.legend()
-        plt.title("f"+ str(f))
+        plt.title("f"+ str(f_idx))
     plt.tight_layout()
     plt.show()
 
