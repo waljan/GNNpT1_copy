@@ -25,6 +25,15 @@ from Save_Data_Objects import load_obj
 
 
 def train(model, train_loader, optimizer, crit, device):
+    """
+
+    :param model: (str) which model is trained
+    :param train_loader:
+    :param optimizer: which optimizer is used (Adam)
+    :param crit: which loss function is used
+    :param device: (str) either "cpu" or "gpu"
+    :return:
+    """
     model.train()
     # iterate over all batches in the training data
     for data in train_loader:
@@ -100,6 +109,11 @@ def plot_train_test(train_accs, test_accs):
     plt.legend()
     plt.show()
 
+
+
+##########################################
+################ TODO: needs to be reviewd
+##########################################
 
 def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder):
     print("load data")
@@ -189,19 +203,19 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
     print("average val accuracy:", mean(test_res))
 
 
-###############################
-###############################
+##########################################
+##########################################
 
 
 def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, opt=False):
     print("load data")
-    # raw_data = DataConstructor()
+
     #load the data lists and split them into train, val, test and train-augmented
-    all_lists = load_obj(folder)
+    all_lists = load_obj(folder, augment=10, sd=0.01)           ################################# choose which augmentation file
     all_train_lists = all_lists[0]
     all_val_lists = all_lists[1]
     all_test_lists = all_lists[2]
-    all_train_aug_lists = all_lists[3]
+    all_train_aug_lists = all_lists[3] # contains train and augmented train graphs
 
     val_res = [] # will contain the validation accuracy obtained in the last epoch (one value for every cross validation run)
 
@@ -229,8 +243,8 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             indices = list(range(0, num_train)) # get all original graphs
 
             # randomly select n_aug augmented graphs
-            n_aug = 20
-            choice = random.sample(range(1,20), n_aug-1)
+            n_aug=5
+            choice = random.sample(range(1,n_aug), n_aug-1)         # n_aug determines by which factor the dataset should be augmented
             for j in choice:
                 indices.extend(random.sample(range(num_train*j, num_train*(j+1)),num_train))
 
@@ -406,7 +420,7 @@ if __name__ == "__main__":
     # m = "GCNWithJK"
     m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
-    # m = "OwnGraphNN"
+    m = "OwnGraphNN"
     # m = "GATNet"
 
     # m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
@@ -586,17 +600,6 @@ if __name__ == "__main__":
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
-        # if m == "OwnGraphNN":
-        #     batch_size = 64
-        #     num_epochs = 20
-        #     num_layers = 3
-        #     num_input_features = 33
-        #     hidden = 132
-        #     lr = 0.005
-        #     lr_decay = 0.6
-        #     step_size = 3
-        #     augment = True
-
         if m == "GraphNN":
             # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
             # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
@@ -609,6 +612,19 @@ if __name__ == "__main__":
             lr_decay = 0.50
             step_size = 4
             augment = False
+
+
+         ############### augment
+        if m == "OwnGraphNN":
+            batch_size = 64
+            num_epochs = 8
+            num_layers = 3
+            num_input_features = 33
+            hidden = 66
+            lr = 0.002
+            lr_decay = 0.5
+            step_size = 2
+            augment = True
 
  ############ base dataset: ##########################################
             # 93-95% depending on model and initialization
