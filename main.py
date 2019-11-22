@@ -15,7 +15,7 @@ import copy
 
 
 #own modules
-from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, GATNet, GraphNN, NMP
+from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, OwnGraphNN2, GATNet, GraphNN, NMP
 # from GraphConvolutions import OwnGConv
 from Dataset_construction import DataConstructor
 from MLP import MLP
@@ -281,6 +281,9 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
         elif m == "OwnGraphNN":
             model = OwnGraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
+        elif m == "OwnGraphNN2":
+            model = OwnGraphNN2(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden,
+                               mode="cat").to(device)
         elif m == "GATNet":
             model = GATNet(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
 
@@ -407,7 +410,7 @@ if __name__ == "__main__":
     import csv
 
     # choose dataset
-    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    # folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
     folder = "pT1_dataset/graphs/base-dataset/"
 
     # choose device
@@ -421,6 +424,7 @@ if __name__ == "__main__":
     m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
     m = "OwnGraphNN"
+    m = "OwnGraphNN2"
     # m = "GATNet"
 
     # m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
@@ -480,6 +484,17 @@ if __name__ == "__main__":
             batch_size = 32
             num_epochs = 40
             num_layers = 3
+            num_input_features = 4
+            hidden = 32
+            lr = 0.005
+            lr_decay = 0.8
+            step_size = 4
+            augment = False
+
+        if m == "OwnGraphNN2": # no augmentation, base dataset
+            batch_size = 32
+            num_epochs = 40
+            num_layers = 2
             num_input_features = 4
             hidden = 32
             lr = 0.005
@@ -567,17 +582,6 @@ if __name__ == "__main__":
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment=False
 
-        if m == "OwnGraphNN": # no augmentation, base dataset
-            batch_size = 32
-            num_epochs = 20
-            num_layers = 3
-            num_input_features = 33
-            hidden = 132
-            lr = 0.001
-            lr_decay = 0.5
-            step_size = 10
-            augment = False
-
         if m == "GATNet":
             batch_size = 32
             num_epochs = 15
@@ -613,18 +617,40 @@ if __name__ == "__main__":
             step_size = 4
             augment = False
 
-
-         ############### augment
-        if m == "OwnGraphNN":
-            batch_size = 64
-            num_epochs = 8
+        if m == "OwnGraphNN": # no augmentation, base dataset
+            batch_size = 32
+            num_epochs = 20
             num_layers = 3
             num_input_features = 33
-            hidden = 66
+            hidden = 132
+            lr = 0.001
+            lr_decay = 0.5
+            step_size = 10
+            augment = False
+
+
+        if m == "OwnGraphNN2": # no augmentation, base dataset
+            batch_size = 32
+            num_epochs = 15
+            num_layers = 3
+            num_input_features = 33
+            hidden = 132
             lr = 0.002
             lr_decay = 0.5
-            step_size = 2
-            augment = True
+            step_size = 4
+            augment = False
+
+         ############### augment
+        # if m == "OwnGraphNN":
+        #     batch_size = 64
+        #     num_epochs = 8
+        #     num_layers = 2
+        #     num_input_features = 33
+        #     hidden = 132
+        #     lr = 0.002
+        #     lr_decay = 0.5
+        #     step_size = 2
+        #     augment = True
 
  ############ base dataset: ##########################################
             # 93-95% depending on model and initialization
