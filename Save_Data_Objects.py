@@ -37,15 +37,26 @@ def save_obj(folder, augment, sd=1):
         # augment data by adding/subtracting small random values from node features
         if augment > 1:
             train_data_list_aug = aug(train_data_list, n=augment, sd=sd)
+
+            # normalize node features
+            # TODO: how is the original data normalized? per split, or all included?
             ####
-            # t = []
-            # for graph in train_data_list_aug:
-            #     f = graph.x
-            #     t = torch.cat(f, t)
-            #     s += sum(graph.x, 0)  # graph.x has shape [num_nodes, num_node_features], s has shape [num_node_features
-            #     f += s
-            #TODO: normalize
+            first_it = True
+            for graph in train_data_list_aug:       # iterate over every graph
+                if first_it:
+                    features = graph.x                     # get the tensor [num_nodes, num_features] containing all node features of the graph
+                    first_it = False
+                else:
+                    features = torch.cat((features, graph.x))     # concatenate the feature tensors of all graphs
+            f_avg = features.mean(dim=0, keepdim=True)     # compute the mean for every feature across all nodes of all graphs
+            f_sd = features.std(dim=0, keepdim=True)       # compute the standard deviation for every feature across all nodes of all graphs
+
+            for graph_idx in range(len(train_data_list_aug)):
+                train_data_list_aug[graph_idx].x = (train_data_list_aug[graph_idx].x - f_avg)/f_sd      # standardize the features to have mean=0, std=0
             ####
+
+
+
             all_lists[3].append(train_data_list_aug)
         all_lists[0].append(train_data_list)
         all_lists[1].append(val_data_list)
@@ -112,7 +123,7 @@ if __name__ == "__main__":
     # save_obj(folder, augment, sd)
 
 
-    ## load data list from pickle file
+    # load data list from pickle file
     ################################
     all_lists = load_obj(folder, augment, sd)       # all_lists[set][CV-run][graph]
     print(type(all_lists))
