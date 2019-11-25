@@ -111,8 +111,8 @@ class OwnGConv2(MessagePassing):
     def message(self, x_j, edge_attr,pos, edge_index):
         # x_j has shape [E, in_channels]        in_channels corresponds to num_node_features and E to num_edges
         # edge_attr has shape [num_edges, num_edge_features]
-        # edge_attr = edge_attr[torch.randperm(edge_attr.size()[0])]      # TODO: in this model, edge_attr doesnt seem to have an effect (all similar-->need normalization; or network gives ignores it?)
-        x_j = x_j*(1-edge_attr)
+        # edge_attr = edge_attr[torch.randperm(edge_attr.size()[0])]      # TODO: in this model, edge_attr doesnt seem to have an effect (all similar-->need normalization; or network ignores it?)
+        x_j = x_j * (-edge_attr)
         # x_j = x_j * torch.randn(x_j.shape[0], x_j.shape[1], device="cuda") # makes difference
         # x_j = self.m_lin1(x_j)
         # x_j = self.act(x_j)
