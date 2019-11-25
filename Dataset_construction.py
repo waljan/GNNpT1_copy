@@ -9,6 +9,7 @@ import os
 import csv
 import re
 import random
+from statistics import stdev, mean
 
 class DataConstructor():
     def __init__(self):
@@ -79,8 +80,15 @@ class DataConstructor():
         distances = []
         for edge in edge_index:             # iterate over every edge
             positions = pos[edge]           # get the coordinates of the nodes connected by the edge
-            distances.append([torch.dist(positions[0], positions[1], p=2)])         # compute L2 norm
+            # distances.append([torch.dist(positions[0], positions[1], p=2)])         # compute L2 norm  (if distances are not normalized use square brackets directly)
 
+            distances.append(torch.dist(positions[0], positions[1], p=2))       # compute L2 norm; distances is now a list of tensors
+        # normalize distances
+        avg = torch.mean(torch.stack(distances))        # compute the mean for all tensors in the list
+        stdv = torch.std(torch.stack(distances))        # compute the standard deviation for all tensors in the list
+
+        distances = [(dist-avg)/stdv for dist in distances]         # normalization
+        distances = [[item] for item in distances]                  # every tensor is packed into its own list
         edge_attr = torch.tensor(distances, dtype=torch.float)      # create a tensor needed to construct the graph
 
         # construct the graph
@@ -179,18 +187,21 @@ if __name__ == "__main__":
     filename = "img0_0_normal.gxl"
 
     raw_data= DataConstructor() # initialize instance
-    train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder) # get data lists for train, val and test
-    print(len(train_data_list))         # how many graphs are inside the train_data_list
-    print(train_data_list[0])           # data object of first graph graph
+    train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, k=0) # get data lists for train, val and test
+    print("number of graphs",len(train_data_list))         # how many graphs are inside the train_data_list
+    print("first graph:",train_data_list[0])           # data object for first graph
     print("feature vec:",train_data_list[0].x[0])   # feature vec of first node
-    print(raw_data.get_graph(folder, filename))
+    print("data object for graph of img_0_0_normal:", raw_data.get_graph(folder, filename))
 
     # Dataloader
     train_data = DataLoader(train_data_list, batch_size=32)
     for batch in train_data:
-        print(batch.num_graphs)
-        print(batch)
+        print("num of graphs in batch:", batch.num_graphs)
+        print("batch:", batch)
+        break
 
+    print("dimension of edge_attr:", train_data_list[0].edge_attr.dim())
+    print("edge_attr of first graph", train_data_list[0].edge_attr)
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -200,11 +211,11 @@ if __name__ == "__main__":
     # plot feature distributions (normal and abnormal glands together)
     plt.rc("font", size=5)  # change font size
 
-    for f_idx in range(train_data_list[0].num_node_features):           # get indices of every feature
+    for f_idx in range(train_data_list[0].num_node_features):   # get indices of every feature
         f_vec = []                                              # f_vec will contain the values of a particular feature of every node and graph
 
         for graph in train_data_list:                           # iterate over every graph in train_data_list
-            for nd_idx in range(graph.num_nodes):                  # get indices of every node
+            for nd_idx in range(graph.num_nodes):               # get indices of every node
                 f_vec.append(graph.x[nd_idx][f_idx].item())
 
         plt.subplot(4, len(train_data_list[0].x[0])//4+1, f_idx+1)
