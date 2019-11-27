@@ -17,14 +17,15 @@ class OwnGConv(MessagePassing):
     message: mean(ReLU(W1*xj))
     update : ReLU(W2*concat(message, xi))
 
-    x'i =  ReLU( W2*(concat(mean(RelU(W1*xj)), xi) )
+    x'i =  ReLU( W*(concat(mean(xj), xi) )
 
 
     """
     def __init__(self, in_channels, out_channels):
         super(OwnGConv, self).__init__(aggr="mean")
         self.m_lin = torch.nn.Linear(in_channels, out_channels)
-        self.u_lin = torch.nn.Linear(out_channels + in_channels, out_channels)
+        # self.u_lin = torch.nn.Linear(out_channels + in_channels, out_channels)
+        self.u_lin = torch.nn.Linear(2*in_channels, out_channels)
         self.act = torch.nn.ReLU()
 
         # self.m_weight = torch.nn.Parameter(torch.Tensor(in_channels, out_channels))
@@ -54,8 +55,8 @@ class OwnGConv(MessagePassing):
 
     def message(self, x_j):
         # x_j has shape [E, in_channels]
-        x_j = self.m_lin(x_j)
-        x_j = self.act(x_j)         # TODO: test if ReLU is need here (does it improve the model, does it even make sense?)
+        # x_j = self.m_lin(x_j)
+        x_j = x_j
         # x_j = torch.nn.functional.dropout(x_j, p=0.5, training=self.training)
 
         return x_j
@@ -83,9 +84,7 @@ class OwnGConv2(MessagePassing):
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        self.m_lin1 = torch.nn.Linear(in_channels, out_channels)
-
-        self.u_lin1 = torch.nn.Linear(in_channels, out_channels)
+        self.u_lin1 = torch.nn.Linear(in_channels*2, out_channels)
         # self.u_lin2 = torch.nn.Linear(out_channels + out_channels, out_channels)
         # self.u_lin2 = torch.nn.Linear(out_channels, out_channels)
         self.u_lin2 = torch.nn.Linear(in_channels+in_channels, out_channels)
@@ -97,8 +96,6 @@ class OwnGConv2(MessagePassing):
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.m_lin1.reset_parameters()
-
         self.u_lin1.reset_parameters()
         self.u_lin2.reset_parameters()
 
@@ -111,11 +108,15 @@ class OwnGConv2(MessagePassing):
     def message(self, x_j, edge_attr,pos, edge_index):
         # x_j has shape [E, in_channels]        in_channels corresponds to num_node_features and E to num_edges
         # edge_attr has shape [num_edges, num_edge_features]
-        # edge_attr = edge_attr[torch.randperm(edge_attr.size()[0])]      # TODO: in this model, edge_attr doesnt seem to have an effect (all similar-->need normalization; or network ignores it?)
+
+        # edge_attr = edge_attr[torch.randperm(edge_attr.size()[0])
+
+        # with JK edge_attr doesnt seem to have an effect (random permutation of edge features doesnt decrease accuracy),
+        # but without JK it performs worse (when looking at average across multiple runs)
+
         x_j = x_j * (-edge_attr)
         # x_j = x_j * torch.randn(x_j.shape[0], x_j.shape[1], device="cuda") # makes difference
-        # x_j = self.m_lin1(x_j)
-        # x_j = self.act(x_j)
+
 
         # x_j = torch.nn.functional.dropout(x_j, p=0.5, training=self.training)
 
@@ -125,11 +126,13 @@ class OwnGConv2(MessagePassing):
         # h = self.u_lin1(x)
         h=x
         # h = x *torch.randn(x.shape[0], x.shape[1], device="cuda")
-        # new_embedding = torch.cat([aggr_out, h], dim=1)
-        new_embedding = aggr_out + h
+
+        # new_embedding = torch.nn.functional.dropout(new_embedding, p=0.5, training=self.training)
+
+        new_embedding = torch.cat([aggr_out, x], dim=1)
         new_embedding = self.u_lin1(new_embedding)
         new_embedding = self.act(new_embedding)
-        # new_embedding = torch.nn.functional.dropout(new_embedding, p=0.5, training=self.training)
+
 
         # return new_embedding
         return new_embedding
