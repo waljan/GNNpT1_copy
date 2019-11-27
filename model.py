@@ -167,7 +167,7 @@ class GCNWithJK(torch.nn.Module):
             x = F.relu(conv(x, edge_index))
             x = F.dropout(x, p=0.5, training=self.training)  ##################
             xs += [x]  # xs: list containing layer-wise representations
-        x = self.jump(xs) # aggregate information accross different layers
+        x = self.jump(xs) # aggregate information across different layers (concatenation)
         # x.shape: torch.Size([num_nodes_in_batch, num_layers * hidden])
         # example: x.shape = torch.Size([2490, 2*66])
 
@@ -610,6 +610,7 @@ class OwnGraphNN(torch.nn.Module):
             # x = F.relu(self.bn_conv2(conv(x, edge_index)))
             # x = F.relu(conv(x, edge_index))
             x = conv(x, edge_index)
+            # no ReLU because its already implemented in the graphconvolution
             x = F.dropout(x, p=0.5, training=self.training) #################
             xs += [x]
 
@@ -646,12 +647,13 @@ class OwnGraphNN2(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
             self.convs.append(OwnGConv2(hidden, hidden))
-        self.jump = JumpingKnowledge(mode)
-        if mode == 'cat':
-            self.lin1 = Linear(num_layers * hidden, hidden)
-            # self.lin1 = Linear(2*num_layers * hidden, 2*hidden)
-        else:
-            self.lin1 = Linear(hidden, 2*hidden)
+        # self.jump = JumpingKnowledge(mode)
+        # if mode == 'cat':
+        #     self.lin1 = Linear(num_layers * hidden, hidden)
+        #     # self.lin1 = Linear(2*num_layers * hidden, 2*hidden)
+        # else:
+        #     self.lin1 = Linear(hidden, hidden)
+        self.lin1 = Linear(hidden, hidden)
         self.lin2 = Linear(hidden, hidden)
         self.lin3 = Linear(hidden, 2)
         # self.bn_conv1 = torch.nn.BatchNorm1d(hidden)
@@ -665,7 +667,7 @@ class OwnGraphNN2(torch.nn.Module):
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()
-        self.jump.reset_parameters()
+        # self.jump.reset_parameters()
         self.lin1.reset_parameters()
         self.lin2.reset_parameters()
         self.lin3.reset_parameters()
@@ -696,7 +698,7 @@ class OwnGraphNN2(torch.nn.Module):
             x = F.dropout(x, p=0.5, training=self.training) #################
             xs += [x]
 
-        x = self.jump(xs)
+        # x = self.jump(xs)
 
         # graph pooling
         x = global_mean_pool(x, batch)
