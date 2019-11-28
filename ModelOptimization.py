@@ -32,7 +32,7 @@ def hyperopt(search_space):
         val_acc = []
         for it in range(3):                                     # train and validate the model 3 times to get an average accuracy
             print("run:", it)
-            res, bool = train_and_val(**params, opt = True)     # train and validate the model using the given set of hyperparamters (**params)
+            res, bool, _, _, _, _= train_and_val(**params, opt = True)     # train and validate the model using the given set of hyperparamters (**params)
             if bool:                                            # if the train_and_val function was stopped early, return the obtained score and go to the next param combination
                 val_acc.append(res)
                 score = mean(val_acc)
@@ -49,7 +49,7 @@ def hyperopt(search_space):
         fn = objective_function,        # fn is the function that is to be minimize
         space = search_space,           # searchspace for the parameters
         algo = tpe.suggest,             # Search algorithm: Tree of Parzen estimators
-        max_evals = 25,                # number of parameter combinations that should be evalutated
+        max_evals = 150,                # number of parameter combinations that should be evalutated
         trials = trials,                # by passing a trials object we can inspect all the return values that were calculated during the experiment
         rstate=np.random.RandomState(111))      #
     print("done")
@@ -123,7 +123,7 @@ if __name__ == "__main__":
         "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.1)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
         "step_size": pyll.scope.int(hp.quniform("step_size", 2,11, 2)),
         "lr_decay": hp.uniform("lr_decay", 0.5, 1),                                 # hp.uniform(label, low, high) return a value uniformly between low and high
-        "m": hp.choice("m", ["GraphSAGE"]),
+        "m": hp.choice("m", ["OwnGraphNN2"]),
         "folder": hp.choice("folder", ["pT1_dataset/graphs/base-dataset/"]),
         "augment": hp.choice("augment", [0])
     }
@@ -131,9 +131,16 @@ if __name__ == "__main__":
     results = hyperopt(search_space)
     print(type(results))
 
-
+# need to run both again due to changes in the algorithm
 # 150 iterations for GraphSage on base-dataset
 # Score best parameters:  0.9550437288809382
 # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 33.0, 'lr': 0.002000837078491707, 'lr_decay': 0.9054101608439347, 'm': 0, 'num_epochs': 30.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 10.0}
 # Time elapsed:  3047.017801761627
-# Parameter combinations evaluated:  10
+# Parameter combinations evaluated:  150
+
+# 150 iterations for OwnGraphNN2 on base-dataset (no JK) 27.11.19
+# Score best parameters:  0.9357781753130591
+# Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 66.0, 'lr': 0.016524715056410965, 'lr_decay': 0.6423329610104529, 'm': 0, 'num_epochs': 20.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 2.0}
+# Time elapsed:  2382.9594628810883
+# Parameter combinations evaluated:  150
+
