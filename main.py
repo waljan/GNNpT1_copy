@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
 from statistics import mean
 import random
+from scipy.stats import t
 import copy
 
 
@@ -202,7 +203,7 @@ def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidde
 
     print("average val accuracy:", mean(test_res))
 
-
+##########################################
 ##########################################
 ##########################################
 
@@ -264,7 +265,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
 
 
         # initialize train loader
-        train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True, drop_last=True)
         # initialize val loader
         val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
 
@@ -325,7 +326,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             if bad_epoch == 5:
                 val_res.append(val_acc)
                 print("bad params, acc:", mean(val_res))
-                return(mean(val_res), True)
+                return(mean(val_res), True)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
     ####################################################################
     ###################################################################
 
@@ -397,13 +398,95 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             print("false_negatives:", fns)
 
     print("average val accuracy:", mean(val_res))
-    return(mean(val_res), False)
+    return(mean(val_res), False, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))   # the boolean tells that train_and_val was completed (good param combination)
+
+def plot_multiple_runs(num_runs, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment):
+    """
+    plots average and confidence band of the train and validation accuracy and loss
+    :param num_runs:
+    :param batch_size:
+    :param num_epochs:
+    :param num_layers:
+    :param num_input_features:
+    :param hidden:
+    :param device:
+    :param lr:
+    :param step_size:
+    :param lr_decay:
+    :param m:
+    :param folder:
+    :param augment:
+    :return:
+    """
+    train_accs_all_runs = np.empty((4*num_runs, num_epochs))
+    val_accs_all_runs = np.empty((4*num_runs, num_epochs))
+    train_losses_all_runs = np.empty((4*num_runs, num_epochs))
+    val_losses_all_runs = np.empty((4*num_runs, num_epochs))
+    for run in range(num_runs):
+        _, _, train_accs, val_accs, losses, val_losses = train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, opt=True)
+        # train_accs, val_accs, losses and val_losses have shape (4, num_epochs)
+        train_accs_all_runs[run*4: (run+1)*4, :] = train_accs*100
+        val_accs_all_runs[run*4: (run+1)*4, :] = val_accs*100
+        train_losses_all_runs[run*4: (run+1)*4, :] = losses
+        val_losses_all_runs[run*4: (run+1)*4, :] = val_losses
+
+    # compute confidence interval for train accuracies
+    confidence = 0.95
+    sd_train_acc = np.std(train_accs_all_runs, axis=0)
+    mean_train_acc = np.mean(train_accs_all_runs, axis=0)
+    CI_lb_train_acc = mean_train_acc - sd_train_acc*t.ppf((1 - confidence) / 2, num_epochs -1)
+    CI_ub_train_acc = mean_train_acc + sd_train_acc*t.ppf((1 - confidence) / 2, num_epochs -1)
+
+    # compute confidence interval for train losses
+    confidence = 0.95
+    sd_train_loss = np.std(train_losses_all_runs, axis=0)
+    mean_train_loss = np.mean(train_losses_all_runs, axis=0)
+    CI_lb_train_loss = mean_train_loss - sd_train_loss*t.ppf((1 - confidence) / 2, num_epochs -1)
+    CI_ub_train_loss = mean_train_loss + sd_train_loss*t.ppf((1 - confidence) / 2, num_epochs -1)
+
+    # compute confidence interval for validation accuracies
+    sd_val_acc = np.std(val_accs_all_runs, axis=0)
+    mean_val_acc = np.mean(val_accs_all_runs, axis=0)
+    CI_lb_val_acc = mean_val_acc - sd_val_acc * t.ppf((1 - confidence) / 2, num_epochs - 1)
+    CI_ub_val_acc = mean_val_acc + sd_val_acc * t.ppf((1 - confidence) / 2, num_epochs - 1)
+
+    # compute confidence interval for validation losses
+    sd_val_loss = np.std(val_losses_all_runs, axis=0)
+    mean_val_loss = np.mean(val_losses_all_runs, axis=0)
+    CI_lb_val_loss = mean_val_loss - sd_val_loss * t.ppf((1 - confidence) / 2, num_epochs - 1)
+    CI_ub_val_loss = mean_val_loss + sd_val_loss * t.ppf((1 - confidence) / 2, num_epochs - 1)
 
 
+    # plot train and validation accuracies and losses
+    plt.rc("font", size=5)
+    x = range(num_epochs)
+    ltype = [":", "-.", "--", "-"]
 
+    plt.subplot(2, 1, 1)
+    plt.fill_between(range(num_epochs), CI_ub_train_acc, CI_lb_train_acc, facecolor="red", alpha=0.1)
+    plt.plot(x, mean_train_acc, color="red", linestyle=ltype[3], label="train")
 
+    plt.fill_between(range(num_epochs), CI_ub_val_acc, CI_lb_val_acc, facecolor="green", alpha=0.1)
+    plt.plot(x, mean_val_acc, color="green", linestyle=ltype[3], label="val")
+    plt.ylim(50, 100)
+    plt.xlim(0,num_epochs-1)
+    plt.legend(loc="lower right")
+    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+        title = "paper-graphs, " + m + ",   Mean val_acc: " + str(round(mean_val_acc[-1], 2)) + "%" + ",   sd of val_acc: " + str(np.round(sd_val_acc[-1], 2)) + ",  Total runs: "  + str(num_runs)
+        plt.title(title)
+    if folder == "pT1_dataset/graphs/base-dataset/":
+        title = "base-dataset, " + m + ",   Mean val_acc: " + str(round(mean_val_acc[-1], 2)) + "%" + ",   sd of val_acc: " + str(np.round(sd_val_acc[-1], 2)) + ",  Total runs: "  + str(num_runs)
+        plt.title(title)
 
+    plt.subplot(2,1,2)
+    plt.fill_between(range(num_epochs), CI_ub_train_loss, CI_lb_train_loss, facecolor="red", alpha=0.1)
+    plt.plot(x, mean_train_loss, color="red", linestyle=ltype[3], label="train")
 
+    plt.fill_between(range(num_epochs), CI_ub_val_loss, CI_lb_val_loss, facecolor="green", alpha=0.1)
+    plt.plot(x, mean_val_loss, color="green", linestyle=ltype[3], label="val")
+    plt.xlim(0, num_epochs-1)
+    plt.legend(loc="upper right")
+    plt.show()
 
 if __name__ == "__main__":
     import time
@@ -423,8 +506,8 @@ if __name__ == "__main__":
     # m = "GCNWithJK"
     m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
-    m = "OwnGraphNN"
-    m = "OwnGraphNN2"
+    # m = "OwnGraphNN"
+    # m = "OwnGraphNN2"
     # m = "GATNet"
 
     # m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
@@ -518,10 +601,8 @@ if __name__ == "__main__":
     # init ist normal
     # k fold ist normal
     #TODO
-    # augment only some nodes and some features
     # try with coordinates as node features
     # try node distance as edge feature
-    # comment code, shape of tensors ect.
 ######################################################################
 
     elif folder == "pT1_dataset/graphs/base-dataset/":
@@ -631,13 +712,13 @@ if __name__ == "__main__":
 
         if m == "OwnGraphNN2": # no augmentation, base dataset
             batch_size = 32
-            num_epochs = 15
-            num_layers = 3
+            num_epochs = 20
+            num_layers = 2
             num_input_features = 33
-            hidden = 132
-            lr = 0.002
-            lr_decay = 0.5
-            step_size = 4
+            hidden = 66
+            lr = 0.016
+            lr_decay = 0.64
+            step_size = 2
             augment = False
 
          ############### augment
@@ -686,8 +767,12 @@ if __name__ == "__main__":
     # print(len(val_))
 
 
-    train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
+    # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
     #
     #
     # train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
 
+
+
+    # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
+plot_multiple_runs(3, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
