@@ -55,12 +55,16 @@ def save_obj(folder, augment, sd=1):
                 train_data_list_aug[graph_idx].x = (train_data_list_aug[graph_idx].x - f_avg)/f_sd      # standardize the features to have mean=0, std=0
             ####
 
-
-
             all_lists[3].append(train_data_list_aug)
         all_lists[0].append(train_data_list)
         all_lists[1].append(val_data_list)
         all_lists[2].append(test_data_list)
+
+        # TODO: edge feature normalization for all data lists.
+        # normalize edge features
+        ###
+
+        ###
 
     # save the data lists
     if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
@@ -104,6 +108,11 @@ def load_obj(folder, augment, sd):
 
 if __name__ == "__main__":
 
+    ## save or load data
+    ################################
+    save = True
+
+
     ## choose folder
     ################################
     # folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
@@ -118,43 +127,46 @@ if __name__ == "__main__":
     sd = 0.01
     # sd = 0.5
 
-    # ## save data lists to pickle file
-    # ###############################
-    # save_obj(folder, augment, sd)
+    if save:
+        print ("saving..")
+        # ## save data lists to pickle file
+        # ###############################
+        save_obj(folder, augment, sd)
+
+    else:
+        print("loading..")
+        # load data list from pickle file
+        ################################
+        all_lists = load_obj(folder, augment, sd)       # all_lists[set][CV-run][graph]
+        print(type(all_lists))
+        print(all_lists[0][2][3])
+        print(len(all_lists))
+        print(len(all_lists[0]))
+        print(len(all_lists[0][0]))
+        print(len(all_lists[3]))
+        print(len(all_lists[3][0]))
+
+        all_train_lists = all_lists[0]
+        all_val_lists = all_lists[1]
+        all_test_lists = all_lists[2]
+        all_train_aug_lists = all_lists[3]
 
 
-    # load data list from pickle file
-    ################################
-    all_lists = load_obj(folder, augment, sd)       # all_lists[set][CV-run][graph]
-    print(type(all_lists))
-    print(all_lists[0][2][3])
-    print(len(all_lists))
-    print(len(all_lists[0]))
-    print(len(all_lists[0][0]))
-    print(len(all_lists[3]))
-    print(len(all_lists[3][0]))
+        import matplotlib.pyplot as plt
+        from statistics import stdev, mean
 
-    all_train_lists = all_lists[0]
-    all_val_lists = all_lists[1]
-    all_test_lists = all_lists[2]
-    all_train_aug_lists = all_lists[3]
+        plt.rc("font", size=5)  # change font size
 
+        for f_idx in range(all_train_aug_lists[0][0].num_node_features):
+            f_vec = []
 
-    import matplotlib.pyplot as plt
-    from statistics import stdev, mean
+            for graph in all_train_aug_lists[0]:
+                for nd_idx in range(graph.num_nodes):
+                    f_vec.append(graph.x[nd_idx][f_idx].item())
 
-    plt.rc("font", size=5)  # change font size
+            plt.subplot(4, all_train_aug_lists[0][0].num_node_features//4+1, f_idx+1)
+            plt.hist(f_vec, density=True)
+            plt.title("f"+ str(f_idx) + "  std: " + str(stdev(f_vec))[:4] + "  mean: " + str(mean(f_vec))[:4])
 
-    for f_idx in range(all_train_aug_lists[0][0].num_node_features):
-        f_vec = []
-
-        for graph in all_train_aug_lists[0]:
-            for nd_idx in range(graph.num_nodes):
-                f_vec.append(graph.x[nd_idx][f_idx].item())
-
-        plt.subplot(4, all_train_aug_lists[0][0].num_node_features//4+1, f_idx+1)
-        plt.hist(f_vec, density=True)
-        plt.title("f"+ str(f_idx) + "  std: " + str(stdev(f_vec))[:4] + "  mean: " + str(mean(f_vec))[:4])
-
-    # plt.tight_layout()
-    plt.show()
+        # plt.tight_layout()
+        plt.show()
