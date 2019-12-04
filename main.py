@@ -326,7 +326,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
             if bad_epoch == 5:
                 val_res.append(val_acc)
                 print("bad params, acc:", mean(val_res))
-                return(mean(val_res), True)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
+                return(mean(val_res), True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))     # the boolean tells that train_and_val was stopped early (bad parameter combination)
     ####################################################################
     ###################################################################
 
@@ -469,8 +469,10 @@ def plot_multiple_runs(num_runs, batch_size, num_epochs, num_layers, num_input_f
     plt.fill_between(range(num_epochs), CI_ub_val_acc, CI_lb_val_acc, facecolor="green", alpha=0.1)
     plt.plot(x, mean_val_acc, color="green", linestyle=ltype[3], label="val")
     plt.ylim(50, 100)
+    plt.yticks(np.arange(50,101, 5))
     plt.xlim(0,num_epochs-1)
     plt.legend(loc="lower right")
+    plt.gca().yaxis.grid(True)
     if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         title = "paper-graphs, " + m + ",   Mean val_acc: " + str(round(mean_val_acc[-1], 2)) + "%" + ",   sd of val_acc: " + str(np.round(sd_val_acc[-1], 2)) + ",  Total runs: "  + str(num_runs)
         plt.title(title)
@@ -486,6 +488,7 @@ def plot_multiple_runs(num_runs, batch_size, num_epochs, num_layers, num_input_f
     plt.plot(x, mean_val_loss, color="green", linestyle=ltype[3], label="val")
     plt.xlim(0, num_epochs-1)
     plt.legend(loc="upper right")
+    plt.gca().yaxis.grid(True)
     plt.show()
 
 if __name__ == "__main__":
@@ -493,8 +496,8 @@ if __name__ == "__main__":
     import csv
 
     # choose dataset
-    # folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "pT1_dataset/graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    # folder = "pT1_dataset/graphs/base-dataset/"
 
     # choose device
     device = torch.device("cpu")
@@ -503,14 +506,14 @@ if __name__ == "__main__":
     # choose one of the models by commenting out the others
 
     # m = "GCN"
-    # m = "GCNWithJK"
-    m = "GraphSAGE"
+    m = "GCNWithJK"
+    # m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
     # m = "OwnGraphNN"
     # m = "OwnGraphNN2"
     # m = "GATNet"
 
-    # m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
+    m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
 
     # m = "GraphNN" # no suitable hyperparameters found so far
 
@@ -520,6 +523,18 @@ if __name__ == "__main__":
     if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
 
         if m=="GCN":
+            ##### Results 30 epochs
+            # Score best parameters:  0.8589743589743589
+            # Best parameters:  {'augment': 0, 'batch_size': 64.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.012793525979611179, 'lr_decay': 0.9374830961973096, 'm': 0, 'num_epochs': 25.0, 'num_input_features': 0, 'num_layers': 3.0, 'step_size': 8.0}
+            # Time elapsed:  3526.099714040756
+            # Parameter combinations evaluated:  200
+
+            # ##### Results 60 epochs
+            # Score best parameters:  0.8660256410256411
+            # Best parameters:  {'augment': 0, 'batch_size': 64.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.014797243234025006, 'lr_decay': 0.8006562056883522, 'm': 0, 'num_epochs': 35.0, 'num_input_features': 0, 'num_layers': 4.0, 'step_size': 6.0}
+            # Time elapsed:  8320.881160974503
+            # Parameter combinations evaluated:  200
+
             batch_size = 32
             num_epochs = 50
             num_layers = 3
@@ -531,6 +546,19 @@ if __name__ == "__main__":
             augment=False
 
         if m=="GCNWithJK":
+            ##### Results 30 epochs
+            # Score best parameters:  0.8641025641025641
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.010844973452502273, 'lr_decay': 0.53444625039881, 'm': 0, 'num_epochs': 25.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 10.0}
+            # Time elapsed:  4605.513494968414
+            # Parameter combinations evaluated:  200
+
+            ##### Results 60 epochs
+            # Score best parameters:  0.8698717948717949
+            # Best parameters:  {'augment': 0, 'batch_size': 64.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.019668175615623458, 'lr_decay': 0.9307184807502304, 'm': 0, 'num_epochs': 55.0, 'num_input_features': 0, 'num_layers': 4.0, 'step_size': 8.0}
+            # Time elapsed:  9676.831815004349
+            # Parameter combinations evaluated:  200
+
+
             batch_size = 32
             num_epochs = 40
             num_layers = 3
@@ -542,6 +570,18 @@ if __name__ == "__main__":
             augment=False
 
         if m=="GraphSAGE":
+            ##### Results 30 epochs
+            # Score best parameters:  0.8570512820512821
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.010339463910339365, 'lr_decay': 0.8771497847359729, 'm': 0, 'num_epochs': 30.0, 'num_input_features': 0, 'num_layers': 4.0, 'step_size': 8.0}
+            # Time elapsed:  3968.1155955791473
+            # Parameter combinations evaluated:  200
+
+            # ##### Results 60 epochs
+            # Score best parameters:  0.8666666666666667
+            # Best parameters:  {'augment': 0, 'batch_size': 64.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.02137768522636307, 'lr_decay': 0.8613036839234021, 'm': 0, 'num_epochs': 60.0, 'num_input_features': 0, 'num_layers': 3.0, 'step_size': 8.0}
+            # Time elapsed:  8008.898519039154
+            # Parameter combinations evaluated:  200
+
             batch_size = 32
             num_epochs = 40
             num_layers = 3
@@ -553,6 +593,18 @@ if __name__ == "__main__":
             augment=False
 
         if m=="GraphSAGEWithJK":
+            ##### Results 30 epochs
+            # Score best parameters:  0.867948717948718
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.016476786548387877, 'lr_decay': 0.9390860412478139, 'm': 0, 'num_epochs': 30.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 8.0}
+            # Time elapsed:  4553.214093923569
+            # Parameter combinations evaluated:  200
+
+            ##### Results 60 epochs
+            # Score best parameters:  0.8660256410256411
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.026923297608392217, 'lr_decay': 0.5887115050272453, 'm': 0, 'num_epochs': 45.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 10.0}
+            # Time elapsed:  10604.129270076752
+            # Parameter combinations evaluated:  200
+
             batch_size = 32
             num_epochs = 40
             num_layers = 3
@@ -564,6 +616,12 @@ if __name__ == "__main__":
             augment=False
 
         if m == "OwnGraphNN":
+            ##### Results 60 epochs
+            # Score best parameters:  0.8743589743589744
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.0036885979714952857, 'lr_decay': 0.9076072822431582, 'm': 0, 'num_epochs': 45.0, 'num_input_features': 0, 'num_layers': 6.0, 'step_size': 6.0}
+            # Time elapsed:  8489.2875020504
+            # Parameter combinations evaluated:  200
+
             batch_size = 32
             num_epochs = 40
             num_layers = 3
@@ -575,6 +633,12 @@ if __name__ == "__main__":
             augment = False
 
         if m == "OwnGraphNN2": # no augmentation, base dataset
+            ##### Results 60 epochs
+            # Score best parameters:  0.8634615384615385
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 16.0, 'lr': 0.011699709513714454, 'lr_decay': 0.9342210923677433, 'm': 0, 'num_epochs': 35.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 2.0}
+            # Time elapsed:  934.479779958725
+            # Parameter combinations evaluated:  200
+
             batch_size = 32
             num_epochs = 40
             num_layers = 2
@@ -582,6 +646,22 @@ if __name__ == "__main__":
             hidden = 32
             lr = 0.005
             lr_decay = 0.8
+            step_size = 4
+            augment = False
+
+        if m == "NMP":
+            ##### Results
+            # Score best parameters:  0.908974358974359
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 12.0, 'lr': 0.0061757377088256646, 'lr_decay': 0.9221836029949306, 'm': 0, 'num_epochs': 45.0, 'num_input_features': 0, 'num_layers': 5.0, 'step_size': 4.0}
+            # Time elapsed:  10905.121413469315
+            # Parameter combinations evaluated:  200
+            batch_size = 32
+            num_epochs = 40
+            num_layers = 3
+            num_input_features = 4
+            hidden = 12
+            lr = 0.0074
+            lr_decay = 0.68
             step_size = 4
             augment = False
 
@@ -606,37 +686,60 @@ if __name__ == "__main__":
 ######################################################################
 
     elif folder == "pT1_dataset/graphs/base-dataset/":
+
         if m=="GCN": # 32, 15, 2, 33, 66, 0.005, 0.5, 4
+            ##### Results
+            # Score best parameters:  0.9563406877360365
+            # Best parameters:  {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 99.0, 'lr': 0.003591084709792508, 'lr_decay': 0.9924941140087403, 'm': 0, 'num_epochs': 15.0, 'num_input_features': 0, 'num_layers': 2.0, 'step_size': 8.0}
+            # Time elapsed:  6785.039863109589
+            # Parameter combinations evaluated:  200
+
             batch_size = 32
             num_epochs = 15
             num_layers = 2
             num_input_features = 33
-            hidden = 66
-            lr = 0.005
-            lr_decay = 0.5
-            step_size = 4 # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            hidden = 99
+            lr = 0.0036
+            lr_decay = 0.99
+            step_size = 8 # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
         if m == "GCNWithJK":
+            ##### Results
+            # Score best parameters: 0.9608328364142318
+            # Best parameters: {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 99.0,
+            #              'lr': 0.0024193024538765704, 'lr_decay': 0.5443459974128411, 'm': 0, 'num_epochs': 25.0,
+            #              'num_input_features': 0, 'num_layers': 3.0, 'step_size': 8.0}
+            # Time elapsed: 7471.490391492844
+            # Parameter combinations evaluated: 200
+
             batch_size = 32
-            num_epochs = 15
-            num_layers = 2
+            num_epochs = 25
+            num_layers = 3
             num_input_features = 33
-            hidden = 66
-            lr = 0.005
-            lr_decay = 0.5
-            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            hidden = 99
+            lr = 0.0024
+            lr_decay = 0.544
+            step_size = 8  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
         if m == "GraphSAGE":
-            batch_size = 32
+            ##### Results
+            # Score best parameters: 0.956350626118068
+            # Best parameters: {'augment': 0, 'batch_size': 64.0, 'device': 0, 'folder': 0, 'hidden': 33.0,
+            #              'lr': 0.014437187466177292, 'lr_decay': 0.8652153994753429, 'm': 0, 'num_epochs': 15.0,
+            #              'num_input_features': 0, 'num_layers': 2.0, 'step_size': 6.0}
+            # Time elapsed: 4649.555609464645
+            # Parameter combinations evaluated: 200
+
+            batch_size = 64
             num_epochs = 15
             num_layers = 2
             num_input_features = 33
-            hidden = 136
-            lr = 0.005
-            lr_decay = 0.5
-            step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
+            hidden = 33
+            lr = 0.0144
+            lr_decay = 0.865
+            step_size = 6  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
         # if m == "GraphSAGE":
@@ -653,72 +756,119 @@ if __name__ == "__main__":
         if m == "GraphSAGEWithJK":
             # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
             # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
+            ##### Results
+            # Score best parameters: 0.9563257801629895
+            # Best parameters: {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 99.0,
+            #              'lr': 0.0014316728127871784, 'lr_decay': 0.9234235858502406, 'm': 0, 'num_epochs': 25.0,
+            #              'num_input_features': 0, 'num_layers': 5.0, 'step_size': 4.0}
+            # Time elapsed: 6238.133633613586
+            # Parameter combinations evaluated: 200
             batch_size = 32
-            num_epochs = 15
-            num_layers = 3
+            num_epochs = 25
+            num_layers = 5
             num_input_features = 33
-            hidden = 66
-            lr = 0.005
-            lr_decay = 0.2
+            hidden = 99
+            lr = 0.0014
+            lr_decay = 0.92
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment=False
 
         if m == "GATNet":
+            ##### Results
+            # Score best parameters: 0.9653498310475055
+            # Best parameters: {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 66.0,
+            #              'lr': 0.001495015698574218, 'lr_decay': 0.6426887381471241, 'm': 0, 'num_epochs': 30.0,
+            #              'num_input_features': 0, 'num_layers': 2.0, 'step_size': 10.0}
+            # Time elapsed: 6889.107342720032
+            # Parameter combinations evaluated: 200
+
             batch_size = 32
-            num_epochs = 15
+            num_epochs = 30
             num_layers = 2
             num_input_features = 33
             hidden = 66
-            lr = 0.005
-            lr_decay = 0.5
-            step_size = 4
+            lr = 0.00149
+            lr_decay = 0.642
+            step_size = 10
             augment = False
 
         if m == "NMP": ######################## works, but NN for one  edge feature doesnt make sense
+            ##### Results
+            # Score best parameters: 0.958924667064202
+            # Best parameters: {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 33.0,
+            #              'lr': 0.001910597791897388, 'lr_decay': 0.7423309693386441, 'm': 0, 'num_epochs': 30.0,
+            #              'num_input_features': 0, 'num_layers': 3.0, 'step_size': 4.0}
+            # Time elapsed: 7692.55118727684
+            # Parameter combinations evaluated: 200
+
             batch_size = 32
-            num_epochs = 20
-            num_layers = 2
+            num_epochs = 30
+            num_layers = 3
             num_input_features = 33
-            hidden = 66
-            lr = 0.005
-            lr_decay = 0.9
+            hidden = 33
+            lr = 0.0019
+            lr_decay = 0.742
             step_size = 4  # step_size = 1, after every 1 epoch, new_lr = lr*lr_decay
             augment = False
 
         if m == "GraphNN":
             # 32, 15, 3, 33, 66, 0.005, 0.2, 4 --> 94,87%
             # 64, 25, 3, 33, 66, 0.001, 0.9, 4 --> 93,46%
+            ##### Results
+            # Score best parameters: 0.9569618366129994
+            # Best parameters: {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 132.0,
+            #              'lr': 0.0015959695503089506, 'lr_decay': 0.8477208566259271, 'm': 0, 'num_epochs': 25.0,
+            #              'num_input_features': 0, 'num_layers': 2.0, 'step_size': 4.0}
+            # Time elapsed: 4706.736705303192
+            # Parameter combinations evaluated: 200
+
             batch_size = 32
-            num_epochs = 15
-            num_layers = 3
+            num_epochs = 25
+            num_layers = 2
             num_input_features = 33
             hidden = 132
-            lr = 0.001
-            lr_decay = 0.50
+            lr = 0.0016
+            lr_decay = 0.848
             step_size = 4
             augment = False
 
         if m == "OwnGraphNN": # no augmentation, base dataset
+            ##### Results
+            # Score best parameters: 0.9582488570860664
+            # Best parameters: {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 99.0,
+            #              'lr': 0.005154576247597213, 'lr_decay': 0.5320574578886035, 'm': 0, 'num_epochs': 25.0,
+            #              'num_input_features': 0, 'num_layers': 2.0, 'step_size': 6.0}
+            # Time elapsed: 4712.040412187576
+            # Parameter combinations evaluated: 200
+
             batch_size = 32
-            num_epochs = 20
-            num_layers = 3
+            num_epochs = 25
+            num_layers = 2
             num_input_features = 33
-            hidden = 132
-            lr = 0.001
-            lr_decay = 0.5
-            step_size = 10
+            hidden = 99
+            lr = 0.00515
+            lr_decay = 0.532
+            step_size = 6
             augment = False
 
 
         if m == "OwnGraphNN2": # no augmentation, base dataset
+            ##### Results
+            # Score best parameters: 0.9576078314450408
+            # Best parameters: {'augment': 0, 'batch_size': 32.0, 'device': 0, 'folder': 0, 'hidden': 132.0,
+            #              'lr': 0.005852895506109887, 'lr_decay': 0.6988460273182655, 'm': 0, 'num_epochs': 30.0,
+            #              'num_input_features': 0, 'num_layers': 2.0, 'step_size': 4.0}
+            # Time elapsed: 4900.7668533325195
+            # Parameter combinations evaluated: 200
+
             batch_size = 32
-            num_epochs = 20
+            num_epochs = 30
             num_layers = 2
             num_input_features = 33
-            hidden = 66
-            lr = 0.016
-            lr_decay = 0.64
-            step_size = 2
+            hidden = 132
+            lr = 0.00585
+            lr_decay = 0.6988
+            step_size = 4
             augment = False
 
          ############### augment
@@ -775,4 +925,4 @@ if __name__ == "__main__":
 
 
     # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
-plot_multiple_runs(3, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
+    plot_multiple_runs(10, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
