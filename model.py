@@ -7,12 +7,9 @@ from torch_geometric.nn import GCNConv, SAGEConv, GraphConv, NNConv, GATConv, Ju
 from torch_geometric.nn import global_mean_pool, TopKPooling, global_max_pool
 
 # own modules
-from MLP import MLP
-
 from GraphConvolutions import OwnGConv, OwnGConv2
 
 
-# TODO: GatedGraphConv
 
 
 ###################################################################################################
@@ -42,10 +39,8 @@ class GCN(torch.nn.Module):
             self.convs.append(GCNConv(hidden, hidden))  # remaining GCNconv layers
         self.lin1 = Linear(hidden, hidden)              # linear layer
         self.lin2 = Linear(hidden, 2)                   # linear layer, output layer, 2 classes
-        self.reset_parameters()
 
     def reset_parameters(self):     # reset all conv and linear layers
-        print("reset parameters")
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GCNConv class
@@ -351,10 +346,8 @@ class GATNet(torch.nn.Module):
             self.convs.append(GATConv(hidden, hidden))  # remaining GATconv layers
         self.lin1 = Linear(hidden, hidden)              # linear layer
         self.lin2 = Linear(hidden, 2)                   # linear layer, output layer, 2 classes
-        self.reset_parameters()
 
     def reset_parameters(self):     # reset all conv and linear layers
-        print("reset parameters")
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GATConv class
@@ -517,10 +510,8 @@ class NMP(torch.nn.Module):
             self.convs.append(NNConv(hidden, hidden, nn(1, hidden*hidden), aggr="add"))
         self.lin1 = Linear(hidden, hidden)  # linear layer
         self.lin2 = Linear(hidden, 2)       # linear layer, output layer, 2 classes
-        self.reset_parameters()
 
     def reset_parameters(self):     # reset all conv and linear layers except the first GCNConv layer
-        print("reset parameters")
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GCNConv class
@@ -641,7 +632,7 @@ class OwnGraphNN(torch.nn.Module):
 
 
 class OwnGraphNN2(torch.nn.Module):
-    def __init__(self, num_input_features, num_layers, hidden, mode='cat'):
+    def __init__(self, num_input_features, num_layers, hidden):
         super(OwnGraphNN2, self).__init__()
         self.conv1 = OwnGConv2(num_input_features, hidden)
         self.convs = torch.nn.ModuleList()
