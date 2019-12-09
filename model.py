@@ -569,7 +569,6 @@ class OwnGraphNN(torch.nn.Module):
 
 
     def reset_parameters(self):
-        print("reset params")
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()
@@ -654,7 +653,6 @@ class OwnGraphNN2(torch.nn.Module):
 
 
     def reset_parameters(self):
-        print("reset params")
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()
