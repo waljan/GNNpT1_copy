@@ -2,8 +2,8 @@
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials, pyll
 import numpy as np
 from statistics import mean
-from time import time
-
+from time import time, strftime
+import csv
 # own modules
 from main import train, evaluate, train_and_val, train_and_val_1Fold
 
@@ -111,6 +111,21 @@ def hyperopt(search_space, f, m, folder, augment, in_features, runs, iterations,
     print("############################################")
     print("############################################")
 
+    # write final result to a file
+    if folder == "pT1_dataset/graphs/base-dataset/":
+        direc = "base/"
+    elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+        direc = "paper/"
+    path = "./out/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-" + strftime("%Y%m%d-%H%M%S") + ".csv"
+    with open(path, "w") as file:
+        fieldnames = ["dataset", "model","fold", "num_evals", "num_runs_per_eval", "hidden", "lr", "lr_decay", "num_epochs", "num_layers", "step_size"]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerow({"dataset" : folder, "model" : m,"fold":f, "num_evals":iterations, "num_runs_per_eval":runs,
+                            "hidden": best_param["hidden"], "lr" : best_param["lr"], "lr_decay" : best_param["lr_decay"],
+                            "num_epochs" : best_param["num_epochs"], "num_layers" : best_param["num_layers"],
+                            "step_size" : best_param["step_size"]})
+
 
     # return trials       # the trials object contains all the return values calculated during the experiment
 
@@ -122,27 +137,36 @@ if __name__ == "__main__":
     parser.add_argument("--model", "-m", type=str, required=True)
     parser.add_argument("--folder", type=str, required=True)
     parser.add_argument("--augment", action="store_true")
-    parser.add_argument("--max_epochs", type=int, default=31)
+    parser.add_argument("--max_epochs", type=int, default=41)
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--iterations", type=int, default=100)
     parser.add_argument("--device",  type=str, default="cuda")
     args = parser.parse_args()
 
+    if args.folder == "pT1_dataset/graphs/base-dataset/":
+        in_features = 33
+        low = 33
+        high = 133
+        step = 33
+    elif args.folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+        in_features = 4
+        low = 4
+        high = 17
+        step = 4
+
+
     # search space
     search_space = {
-        "num_epochs": pyll.scope.int(hp.quniform("num_epochs", 5, args.max_epochs, 5)),        # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q  in this case: 5,10,15,25,30
+        "num_epochs": pyll.scope.int(hp.quniform("num_epochs", 10, args.max_epochs, 10)),        # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q  in this case: 5,10,15,25,30
         "num_layers": pyll.scope.int(hp.quniform("num_layers", 2, 6,1)),            # pyll.scope.int() converts the float output of hp.quiniform into an integer
-        "hidden": pyll.scope.int(hp.quniform("hidden", 33, 133, 33)),
+        "hidden": pyll.scope.int(hp.quniform("hidden", low, high, step)),
         "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.1)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
         "step_size": pyll.scope.int(hp.quniform("step_size", 2,11, 2)),
         "lr_decay": hp.uniform("lr_decay", 0.5, 1),                                 # hp.uniform(label, low, high) return a value uniformly between low and high
     }                                                                               # hp.choice(label, obptions) options is a list from which one element will be chosen
     # folder= "pT1_dataset/graphs/base-dataset/"
     # augment=False
-    if args.folder == "pT1_dataset/graphs/base-dataset/":
-        in_features = 33
-    elif args.folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
-        in_features = 4
+
 
     results = hyperopt(search_space, f=args.fold, m=args.model, folder=args.folder, augment=args.augment, in_features = in_features, device=args.device, runs=args.runs, iterations=args.iterations)
     # print(type(results))
