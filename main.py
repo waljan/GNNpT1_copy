@@ -40,7 +40,7 @@ def train(model, train_loader, optimizer, crit, device):
 
         label = data.y.to(device) # transfer the labels to the device
 
-        loss = crit(output, label) # compute the loss between output and label
+        loss = crit(output, label[:,1].long()) # compute the loss between output and label
         loss.backward() # compute the gradient
 
         optimizer.step() # adjust the parameters according to the gradient
@@ -66,7 +66,7 @@ def evaluate(model, val_loader, crit, device):
             predictions.append(pred) # append the prediction to the list of all predictions
             labels.append(label)    # append the label to the list of all labels
 
-            loss = crit(predT, labelT)  # compute the loss between output and label
+            loss = crit(predT, labelT[:,1].long())  # compute the loss between output and label
             loss_all += data.num_graphs * loss.item()
             count += data.num_graphs
 
@@ -105,102 +105,6 @@ def plot_train_test(train_accs, test_accs):
     plt.legend()
     plt.show()
 
-
-
-##########################################
-################ TODO: needs to be reviewd
-##########################################
-
-def train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder):
-    print("load data")
-    raw_data = DataConstructor()
-    test_res = []
-
-    train_accs = [[],[],[],[]]
-    test_accs = [[],[],[],[]]
-    losses = [[],[],[],[]]
-    preds = []
-    targets = []
-
-    for k in range (4):
-        print(k)
-        train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder,
-            k=k)  # split the data into train val and test
-
-        # add val to train data
-        for entry in val_data_list:
-            train_data_list.append(entry)
-        print("train size:", len(train_data_list), "test size:", len(test_data_list))
-        # initialize the data loaders
-        train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
-        test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=True)
-
-        print("initialize model", m)
-
-        if m == "GCN":
-            model = GCN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)  # initialize the model
-        elif m == "GCNWithJK":
-            model = GCNWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)  # initialize the model
-        elif m == "GraphSAGE":
-            model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
-        elif m == "GraphSAGEWithJK":
-            model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
-        elif m == "OwnGraphNN":
-            model = OwnGraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
-
-
-
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)  # define the optimizer
-        scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay)
-        crit = torch.nn.MSELoss()  # define the loss function
-
-
-        # compute training and test accuracy for every epoch
-        for epoch in range(num_epochs):
-            loss, batch_losses = train(model, train_loader, optimizer, crit, device)  # train the model with the training_data
-            scheduler.step()
-            losses[k].append(loss)
-            train_acc, _, _ ,_= evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
-            train_accs[k].append(train_acc)
-            test_acc, predictions, labels, _= evaluate(model,test_loader, crit, device)  # compute the accuracy for the test data
-            test_accs[k].append(test_acc)
-            if epoch == num_epochs-1:
-                test_res.append(test_acc)
-                preds.append(predictions)
-                targets.append(labels)
-            if epoch % 1 == 0:
-                for param_group in optimizer.param_groups:
-                    print('Epoch: {:03d}, lr: {:.5f}, Loss: {:.5f}, Train Acc: {:.5f}, Test Acc: {:.5f}'.format(epoch, param_group["lr"], loss, train_acc, test_acc))
-
-    # plot the training and test accuracies
-    x = range(num_epochs)
-    ltype = [":", "-.", "--", "-"]
-    plt.subplot(2, 1, 1)
-    for k in range(4):
-        plt.plot(x, train_accs[k], color=(1, 0, 0), linestyle=ltype[k], label="train {}".format(k))
-        plt.plot(x, test_accs[k], color=(0, 1, 0), linestyle=ltype[k], label="test {}".format(k))
-        plt.ylim(0.5, 1)
-
-    plt.legend()
-    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
-        title = "paper-graphs, " + m + "   Test accuracy: " + str(round(100 * mean(test_res), 2)) + "%"
-        plt.title(title)
-    if folder == "pT1_dataset/graphs/base-dataset/":
-        title = "base-dataset, " + m + "   Test accuracy: " + str(round(100 * mean(test_res), 2)) + "%"
-        plt.title(title)
-
-    plt.subplot(2, 1, 2)
-    for k in range(4):
-        plt.plot(x, losses[k], color=(1, 0, 0), linestyle=ltype[k])
-
-    plt.show()
-
-
-    print("average val accuracy:", mean(test_res))
-
-##########################################
-##########################################
-##########################################
 
 
 def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, opt=False):
@@ -395,7 +299,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
 
 
 
-def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False):
+def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False):
     """
     the data of the pt1 dataset is split into train val and test in 4 different ways
     this function trains and validates using the train and val split of one of these 4 possible splits
@@ -455,7 +359,14 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
         train_data_list = all_train_lists[fold]
         val_data_list = all_val_lists[fold]
         test_data_list = all_test_lists[fold]
-        print("train size: " + str(len(train_data_list)) + "   val size: " + str(len(val_data_list)))
+        # print("train size: " + str(len(train_data_list)) + "   val size: " + str(len(val_data_list)))
+
+    if testing:
+        for entry in val_data_list:
+            train_data_list.append(entry)       # add val to train data
+        val_data_list = test_data_list          # use test_data_list for measuring the performance
+
+    print("train size: " + str(len(train_data_list)) + "   val size: " + str(len(val_data_list)))
 
 
     # initialize train loader
@@ -486,7 +397,7 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.001)  # define the optimizer, weight_decay corresponds to L2 regularization
     scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay) # learning rate decay
-    crit = torch.nn.MSELoss()  # define the loss function
+    crit = torch.nn.NLLLoss() # define the loss function
 
     bad_epoch = 0
     # compute training and validation accuracy for every epoch
@@ -522,7 +433,6 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
         if bad_epoch == 5:
             # print("bad params, best val acc:", val_res)
             return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))     # the boolean tells that train_and_val was stopped early (bad parameter combination)
-
 
 
     ####################################################################
@@ -742,6 +652,17 @@ if __name__ == "__main__":
             lr_decay = 0.95
             step_size = 1
             augment=False
+
+            # #fold 0
+            # batch_size = 32
+            # num_epochs = 35
+            # num_layers = 3
+            # num_input_features = 4
+            # hidden = 16
+            # lr = 0.01
+            # lr_decay = 0.8
+            # step_size = 4
+            # augment=False
 
         if m=="GCNWithJK":
             ##### Results hyperopt 200 iterations; 3 runs of 4-fold cross validation per parameter combination
@@ -1078,8 +999,11 @@ if __name__ == "__main__":
 
     # Not yet working: train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
     fold=0
-    train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False)
-
+    v=0
+    for fold in range(4):
+        val_res, _, _, _, _, _= train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False)
+        v += val_res
+    print(v/4)
 
     # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
     # plot_multiple_runs(10, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
