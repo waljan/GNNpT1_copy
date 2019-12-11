@@ -8,36 +8,33 @@ from torch_geometric.data import DataLoader
 import os
 import csv
 import re
+from pandas import read_excel
+import numpy as np
 import random
 from statistics import stdev, mean
 
 class DataConstructor():
     def __init__(self):
         pass
-    def get_graph(self, folder, filename):
-        """
-        this function takes a gxl-file as input and creates a graph as it is used in pytorch Geometric
-        :param filename: gxl file that stores a graph
-        :param folder:
-        :return python object modeling a single graph with various attributes
-        """
-        # initialize tree from chosen folder/file
-        tree = ET.ElementTree(file=folder + filename)
+
+    def get_graph(selfs, folder, filename, raw = False , k=0):
+
+        # initialize tree from paper-graph dataset to get edge information (because base dataset doesnt has edges)
+        tree = ET.ElementTree(file= "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
         root = tree.getroot()
 
-        # get edges
+        # get edge index
         ##############################
-        # initialize tree from paper-graph dataset to get edge information (because base dataset doesnt has edges)
-        tree2 = ET.ElementTree(file= "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/" + filename)
-        root2 = tree2.getroot()
-
         # get the start and end points of every edge and store them in a list of lists
-        start_points = [int("".join(filter(str.isdigit, edge.attrib["_from"]))) for edge in root2.iter("edge")]
-        end_points = [int("".join(filter(str.isdigit, edge.attrib["_to"]))) for edge in root2.iter("edge")]
+        start_points = [int("".join(filter(str.isdigit, edge.attrib["_from"]))) for edge in root.iter("edge")]
+        end_points = [int("".join(filter(str.isdigit, edge.attrib["_to"]))) for edge in root.iter("edge")]
         edge_list = [[start_points[i], end_points[i]] for i in range(len(start_points))]
 
         # create a tensor needed to construct the graph
         edge_index = torch.tensor(edge_list, dtype=torch.long)
+
+        img = re.split("_", filename)[0]
+        name = re.split("\.", filename)[0]
 
         # get node features and position
         ##############################
@@ -45,17 +42,38 @@ class DataConstructor():
         all_node_features = []
         all_node_positions = []
 
-        for node in root.iter("node"):        # iterate over every node
-            feature_vec = [float(value.text) for feature in node for value in feature]      # get the feature vector of every node
+        if not raw:
+            with open("pT1_dataset/Mean_and_Sd_k" + str(k) + ".csv", mode="r") as file:
+                reader = csv.reader(file, delimiter=",")
+                header = next(reader)
+                mean_vec = np.asarray(next(reader))[1:].astype(float)
+                sd_vec = np.asarray(next(reader))[1:].astype(float)
 
-            if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
-                node_position = feature_vec[4:]         # the last two entries corespond to the node-coordinates in the image
-                feature_vec = feature_vec[:4]           # the coordinates are not used as features
+        # open the csv file containing the raw feature values of the graph extracted from filename
+        raw_data = read_excel("pT1_dataset/dataset/" + img +"/" + name + "/" + name + "-features.xlsx", header=0)
 
+        for index, row in raw_data.iterrows():
 
             if folder == "pT1_dataset/graphs/base-dataset/":
-                node_position = feature_vec[33:]        # the last two entries corespond to the node-coordinates in the image
-                feature_vec = feature_vec[:33]          # the coordinates are not used as features
+                feature_vec = [float(f) for f in row[4:]]
+                node_position = [float(p) for p in row[2:4]]
+
+                if not raw:     # normalize the data using the mean and sd of the training set
+                    feature_vec = np.asarray(feature_vec)
+                    feature_vec = list((feature_vec - mean_vec[3:]) / sd_vec[3:])
+                    node_position = np.asarray(node_position)
+                    node_position = list((node_position - mean_vec[1:3]) / sd_vec[1:3])
+
+
+            if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+                feature_vec = [float(f) for f in [row[10], row[13], row[14], row[35]]]
+                node_position = [float(p) for p in row[2:4]]
+
+                if not raw:     # normalize the data using the mean and sd of the training set
+                    feature_vec = np.asarray(feature_vec)
+                    feature_vec = list((feature_vec - mean_vec[[9,12,13,34]]) / sd_vec[[9,12,13,34]])
+                    node_position = np.asarray(node_position)
+                    node_position = list((node_position - mean_vec[1:3]) / sd_vec[1:3])
 
             # append the feature vec and position of the current node to the list
             all_node_features.append(feature_vec)
@@ -83,11 +101,12 @@ class DataConstructor():
             # distances.append([torch.dist(positions[0], positions[1], p=2)])         # compute L2 norm  (if distances are not normalized use square brackets directly)
 
             distances.append(torch.dist(positions[0], positions[1], p=2))       # compute L2 norm; distances is now a list of tensors
-        # normalize distances
-        avg = torch.mean(torch.stack(distances))        # compute the mean for all tensors in the list
-        stdv = torch.std(torch.stack(distances))        # compute the standard deviation for all tensors in the list
+        # # normalize distances
+        # avg = torch.mean(torch.stack(distances))        # compute the mean for all tensors in the list
+        # stdv = torch.std(torch.stack(distances))        # compute the standard deviation for all tensors in the list
 
-        distances = [(dist-avg)/stdv for dist in distances]         # normalization
+        if not raw:
+            distances = [(dist-mean_vec[0])/sd_vec[0] for dist in distances]         # normalization
         distances = [[item] for item in distances]                  # every tensor is packed into its own list
         edge_attr = torch.tensor(distances, dtype=torch.float)      # create a tensor needed to construct the graph
 
@@ -97,6 +116,7 @@ class DataConstructor():
 
 
         return (graph)
+
 
     def split(self, k):
         """
@@ -132,13 +152,13 @@ class DataConstructor():
 
         r_file_names = []
 
-        for file in os.listdir(folder):         # iterate over every file in the folder
+        for file in sorted(os.listdir(folder)):         # iterate over every file in the folder
             if file.endswith(".gxl"):           # check if its a gxl file
                 r_file_names.append(file)       # add the filename to the list
 
         return r_file_names                     # return the list of gxl filenames
 
-    def get_data_list(self, folder, k=0):
+    def get_data_list(self, folder, k=0, raw=True):
         """
         this function creates lists of data objects (data lists) separated into train val and test
         :param k: k can take values from 0 to 3 and defines which datasplit in the 4-fold cross validation is used
@@ -160,7 +180,7 @@ class DataConstructor():
 
             # create the data object representing the graph stored in the file
             try:
-                data = self.get_graph(folder, file)
+                data = self.get_graph(folder, file, raw = raw, k=k)
             except:
                 print(file, "could not be loaded")
                 continue
@@ -178,8 +198,52 @@ class DataConstructor():
         return train_data_list, val_data_list, test_data_list
 
 
+    def compute_mean_sd_per_split(self):
+        """
+        for every train data split the mean and the standard deviation of every attribute (node, edge and position) is
+        computed and saved (one csv file per data split)
+        """
+        avg_f = [[], [], [], []]
+        stdv_f = [[], [], [], []]
+        avg_pos = [[], [], [], []]
+        stdv_pos = [[], [], [], []]
+        avg_e = [[], [], [], []]
+        stdv_e = [[], [], [], []]
 
+        for k in range(4):      # iterate over the 4 different data splits
+            all_node_features = []
+            all_positions = []
+            all_edge_features = []
 
+            # get the train data list
+            train_data_list, val_data_list, test_data_list = self.get_data_list("pT1_dataset/graphs/base-dataset/", k=k, raw=True)
+            for gidx in range(len(train_data_list)):    # iterate over every graph in the training set
+                for nidx in range(len(train_data_list[gidx])):   # iterate over every node of the graph
+                    all_node_features.append(train_data_list[gidx].x[nidx])     # save the node features
+
+                all_positions.append(train_data_list[gidx].pos)                 # save the node positions
+                all_edge_features.append(train_data_list[gidx].edge_attr)       # save the edge features
+
+            avg_f[k]= torch.mean(torch.stack(all_node_features), dim=0)         # compute the mean for every feature
+            stdv_f[k] = torch.std(torch.stack(all_node_features), dim=0)        # compute sd for every feature
+
+            avg_pos[k] = torch.mean(torch.cat(all_positions), dim=0)            # compute mean across all node positions
+            stdv_pos[k] = torch.std(torch.cat(all_positions), dim=0)            # compute the sd across all node positions
+
+            avg_e[k] = torch.mean(torch.cat(all_edge_features))                 # compute mean of the edge feature
+            stdv_e[k] = torch.std(torch.cat(all_edge_features))                 # compute sd of edge feature
+
+            with open("pT1_dataset/Mean_and_Sd_k" + str(k) + ".csv", "w", newline="") as file:      # create csv file for specific data split
+                csv_writer = csv.writer(file)
+                # write header of the csv file
+                headers = [["metric"], ["edge_attr"], ["x_coordinate"], ["y_coordinate"], ["f%s" % i for i in range(4, 37)]]
+                headers = [item for lst in headers for item in lst]
+                csv_writer.writerow(headers)
+                # write rows of the csv file
+                means = [["mean"], [avg_e[k].item()], [avg_pos[k][0].item()], [avg_pos[k][1].item()], [f.item() for f in avg_f[k]]]
+                sds = [["sd"], [stdv_e[k].item()], [stdv_pos[k][0].item()], [stdv_pos[k][1].item()], [f.item() for f in stdv_f[k]]]
+                csv_writer.writerow([item for lst in means for item in lst])
+                csv_writer.writerow([item for lst in sds for item in lst])
 
 if __name__ == "__main__":
     folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
@@ -187,11 +251,19 @@ if __name__ == "__main__":
     filename = "img0_0_normal.gxl"
 
     raw_data= DataConstructor() # initialize instance
-    train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, k=0) # get data lists for train, val and test
+
+    # make csv files containing the mean and sd of all attributes
+    ##################################
+    # raw_data.compute_mean_sd_per_split()
+
+
+
+    train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, raw=False, k=0) # get data lists for train, val and test
     print("number of graphs",len(train_data_list))         # how many graphs are inside the train_data_list
     print("first graph:",train_data_list[0])           # data object for first graph
     print("feature vec:",train_data_list[0].x[0])   # feature vec of first node
-    print("data object for graph of img_0_0_normal:", raw_data.get_graph(folder, filename))
+    print("data object for graph of img_0_0_normal:", raw_data.get_graph(folder, filename, raw=False, k=0))
+
 
     # Dataloader
     train_data = DataLoader(train_data_list, batch_size=32)
@@ -201,12 +273,14 @@ if __name__ == "__main__":
         break
 
     print("dimension of edge_attr:", train_data_list[0].edge_attr.dim())
-    print("edge_attr of first graph", train_data_list[0].edge_attr)
+    # print("edge_attr of first graph", train_data_list[0].edge_attr)
 
     import matplotlib.pyplot as plt
     import numpy as np
     from statistics import stdev, mean
 
+    # train_data_list = test_data_list
+    # train_data_list = val_data_list
 
     # plot feature distributions (normal and abnormal glands together)
     plt.rc("font", size=5)  # change font size
@@ -220,7 +294,7 @@ if __name__ == "__main__":
 
         plt.subplot(4, len(train_data_list[0].x[0])//4+1, f_idx+1)
         plt.hist(f_vec, density=True)
-        plt.title("f"+ str(f_idx) + "  std: " + str(stdev(f_vec))[:4] + "  mean: " + str(mean(f_vec))[:4])
+        plt.title("f"+ str(f_idx+4) + "  std: " + str(torch.std(torch.tensor(f_vec)).item())[:5] + "  mean: " + str(torch.mean(torch.tensor(f_vec)).item())[:5])
 
     # plt.tight_layout()
     plt.show()
@@ -244,7 +318,7 @@ if __name__ == "__main__":
         plt.hist(f_vec_normal, alpha=0.5, label="n", density=True)
         plt.hist(f_vec_abnormal, alpha=0.5, label="a", density=True)
         plt.legend()
-        plt.title("f"+ str(f_idx))
+        plt.title("f"+ str(f_idx+4))
     plt.tight_layout()
     plt.show()
 
