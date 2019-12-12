@@ -40,7 +40,8 @@ def train(model, train_loader, optimizer, crit, device):
 
         label = data.y.to(device) # transfer the labels to the device
 
-        loss = crit(output, label[:,1].long()) # compute the loss between output and label
+        loss = crit(output, torch.max(label,1)[1].long()) # compute the loss between output and label
+        # loss = crit(output, label)
         loss.backward() # compute the gradient
 
         optimizer.step() # adjust the parameters according to the gradient
@@ -51,8 +52,11 @@ def evaluate(model, val_loader, crit, device):
     predictions = []
     labels = []
     loss_all =0
-    count=0
-
+    graph_count=0
+    batch_count =0
+    correct_pred = 0
+    img_name = [[],[], [], []]
+    TP_TN_FP_FN = np.zeros((4))
     with torch.no_grad(): # gradients don't need to be calculated in evaluation
 
         # pass data through the model and get label and prediction
@@ -61,34 +65,49 @@ def evaluate(model, val_loader, crit, device):
             predT = model(data)#.detach().cpu().numpy()   # pass the data through the model and store the predictions in a numpy array
                                                         # for a batch of 30 graphs, the array has shape [30,2]
             pred = predT.detach().cpu().numpy()
-            labelT = data.y#.detach().cpu().numpy()   # store the labels of the data in a numpy array,
-            label = labelT.detach().cpu().numpy()                                         # for a batch of 30 graphs, the array has shaüe [30, 2]
-            predictions.append(pred) # append the prediction to the list of all predictions
-            labels.append(label)    # append the label to the list of all labels
+            labelT = data.y
+            label = labelT.detach().cpu().numpy()   # store the labels of the data in a numpy array, for a batch of 30 graphs, the array has shaüe [30, 2]
+            predicted_classes = (pred == pred.max(axis=1)[:,None]).astype(int)
+            # predictions.append(predicted_classes) # append the prediction to the list of all predictions
+            # labels.append(label)    # append the label to the list of all labels
 
-            loss = crit(predT, labelT[:,1].long())  # compute the loss between output and label
-            loss_all += data.num_graphs * loss.item()
-            count += data.num_graphs
+            correct_pred += np.sum(predicted_classes[:, 0] == label[:, 0])
 
-    # compute the prediction accuracy
-    correct_pred = 0
-    num_graphs = 0
-    # iterate over every graph
-    for batch in range(len(labels)):
-        for graph in range(len(labels[batch])):
-            num_graphs += 1
-            #             print(max(predictions[batch][graph]))
-            pred_idx = np.argmax(predictions[batch][graph])
-            predictions[batch][graph][pred_idx] = 1
-            predictions[batch][graph][pred_idx-1] = 0
-            #             print(pred_idx)
-            #             print(labels[batch][graph])
-            if labels[batch][graph][pred_idx] == 1: # check if the correct label is predicted
-                correct_pred += 1
-            else:
-                correct_pred += 0
-    acc = correct_pred / num_graphs
-    return acc , predictions, labels, loss_all/count
+            # count the false negatives and false positives
+            false_idx = np.argwhere(predicted_classes[:,0]!=label[:,0]).reshape(-1)
+            truth = label[false_idx,:]
+            c=0
+            for t in truth:
+                if t[0] == 1:
+                    TP_TN_FP_FN[3] +=1
+                    img_name[3].append(data.name[false_idx][c])
+                if t[0]  == 0:
+                    TP_TN_FP_FN[2] +=1
+                    img_name[2].append(data.name[false_idx][c])
+                c+=1
+
+            true_idx = np.argwhere(predicted_classes[:,0]==label[:,0]).reshape(-1)
+            truth = label[true_idx,:]
+            c=0
+            for t in truth:
+                if t[0] == 1:
+                    TP_TN_FP_FN[0] +=1
+                    img_name[0].append(data.name[true_idx][c])
+                if t[0] == 0:
+                    TP_TN_FP_FN[1] += 1
+                    img_name[1].append(data.name[true_idx][c])
+                c+=1
+            loss = crit(predT, torch.max(labelT, 1)[1].long()) # compute the loss between output and label
+            # loss = crit(predT, labelT)
+            # loss_all += data.num_graphs * loss.item()
+            loss_all += loss.item()
+
+            graph_count += data.num_graphs
+            batch_count +=1
+
+    acc = correct_pred / graph_count
+    avg_loss = loss_all/graph_count
+    return acc , avg_loss, img_name, TP_TN_FP_FN
 
 def plot_acc_sep(train_accs, val_accs, test_accs):
     x = range(len(train_accs))
@@ -192,7 +211,7 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
 
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.001)  # define the optimizer, weight_decay corresponds to L2 regularization
         scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay) # learning rate decay
-        crit = torch.nn.MSELoss()  # define the loss function
+        crit = torch.nn.NLLLoss(reduction="sum")  # define the loss function
 
         bad_epoch = 0
         # compute training and validation accuracy for every epoch
@@ -320,7 +339,8 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
     :return:
     """
     #load the data lists and split them into train, val, test and train-augmented
-    all_lists = load_obj(folder, augment=10, sd=0.01)           ################################# choose which augmentation file
+    # all_lists = load_obj(folder, augment=10, sd=0.01)           ################################# choose which augmentation file
+    all_lists = load_obj(folder, augment=0, sd=0)
     all_train_lists = all_lists[0]
     all_val_lists = all_lists[1]
     all_test_lists = all_lists[2]
@@ -397,42 +417,54 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.001)  # define the optimizer, weight_decay corresponds to L2 regularization
     scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay) # learning rate decay
-    crit = torch.nn.NLLLoss() # define the loss function
+
+    crit = torch.nn.CrossEntropyLoss(reduction="sum")
 
     bad_epoch = 0
     # compute training and validation accuracy for every epoch
     for epoch in range(num_epochs):
+        if epoch == 0:
+            train_acc, loss , _,  _ = evaluate(model, train_loader, crit,
+                                             device)  # compute the accuracy for the training data
+            train_accs.append(train_acc)
+            losses.append(loss)
+
+            val_acc, val_loss, img_name, TP_TN_FP_FN  = evaluate(model, val_loader, crit,
+                                                              device)  # compute the accuracy for the test data
+            val_accs.append(val_acc)
+            val_losses.append(val_loss)
+
         # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
 
-        train_acc , _, _, loss = evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
+        train_acc , loss, _, _ = evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
         train_accs.append(train_acc)
         losses.append(loss)
 
-
-        val_acc, predictions, labels, val_loss = evaluate(model,val_loader, crit, device)  # compute the accuracy for the validation data
+        val_acc, val_loss, img_name, TP_TN_FP_FN = evaluate(model, val_loader, crit, device)  # compute the accuracy for the validation data
         # TODO: Save model if val_acc is current best
-        if len(val_accs) == 0:
-            preds_res = predictions
-            targets_res = labels
-            val_res = val_acc
-        elif val_acc > max(val_accs):         # if this is current best save the list of predictions and corresponding labels
-            preds_res = predictions
-            targets_res = labels
+        # if len(val_accs) == 0:
+        #     preds_res = predictions
+        #     targets_res = labels
+        #     val_res = val_acc
+        if val_acc > max(val_accs):         # if this is current best save the list of predictions and corresponding labels
+            img_name_res = img_name
+            TP_TN_FP_FN_res = TP_TN_FP_FN
             val_res = val_acc
 
         val_accs.append(val_acc)
         val_losses.append(val_loss)
 
-        if epoch % 1 == 0:
-            if val_acc<0.6:
-                bad_epoch +=1
-            # for param_group in optimizer.param_groups:
-            #     print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
-        if bad_epoch == 5:
-            # print("bad params, best val acc:", val_res)
-            return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))     # the boolean tells that train_and_val was stopped early (bad parameter combination)
+        if opt:
+            if epoch % 1 == 0:
+                if val_acc<0.6:
+                    bad_epoch +=1
+                # for param_group in optimizer.param_groups:
+                #     print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
+            if bad_epoch == 5:
+                # print("bad params, best val acc:", val_res)
+                return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))     # the boolean tells that train_and_val was stopped early (bad parameter combination)
 
 
     ####################################################################
@@ -443,7 +475,7 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
     ####################################################################
     if not opt:
         plt.rc("font", size=5)
-        x = range(num_epochs)
+        x = range(num_epochs+1)
         ltype = ["--","-"]
 
         plt.subplot(2, 1, 1)
@@ -479,35 +511,16 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
 
     # compute number of false positives, false negatives, true positives and true negatives
     ######################################################################
-        tps = 0
-        tns = 0
-        fps = 0
-        fns = 0
-        print("k =",fold,"-------------")
 
-        pr = np.concatenate(preds_res)
-        pr = pr[:,0]
-
-        tr = np.concatenate(targets_res)
-        tr = tr[:,0]
-
-        for p, t in zip(pr, tr):
-            if p == 1 and t == 1:
-                tps += 1
-            if p == 1 and t == 0:
-                fps += 1
-            if p == 0 and t == 0:
-                tns += 1
-            if p == 0 and t == 1:
-                fns += 1
-
-        print("true positives: " + str( tps))
-        print("true negatives: " + str(tns))
-        print("false positives: " + str(fps))
-        print("false_negatives: " + str(fns))
+        print("true positives: ", TP_TN_FP_FN_res[0])
+        print("true negatives: ", TP_TN_FP_FN_res[1])
+        print("false positives: ", TP_TN_FP_FN_res[2])
+        print("false_negatives: ", TP_TN_FP_FN_res[3])
+        print("FP images:", img_name_res[2])
+        print("FN images:", img_name_res[3])
 
     # print("best val accuracy:", val_res)
-    return(val_res, False, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))   # the boolean tells that train_and_val was completed (good param combination)
+    return(val_res, False, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), img_name_res)   # the boolean tells that train_and_val was completed (good param combination)
 
 
 
@@ -610,7 +623,7 @@ if __name__ == "__main__":
 
     # choose dataset
     folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
-    # folder = "pT1_dataset/graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/base-dataset/"
 
     # choose device
     device = torch.device("cpu")
@@ -620,13 +633,13 @@ if __name__ == "__main__":
 
     # m = "GCN"
     # m = "GCNWithJK"
-    # m = "GraphSAGE"
+    m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
-    m = "OwnGraphNN"
+    # m = "OwnGraphNN"
     # m = "OwnGraphNN2"
     # m = "GATNet"  # at the moment only for base
 
-    m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
+    # m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
 
     # m = "GraphNN" # no suitable hyperparameters found so far
 
@@ -691,11 +704,11 @@ if __name__ == "__main__":
 
             # Baby-sitting
             batch_size = 32
-            num_epochs = 40
+            num_epochs = 35
             num_layers = 3
             num_input_features = 4
             hidden = 32
-            lr = 0.005
+            lr = 0.01
             lr_decay = 0.8
             step_size = 4
             augment=False
@@ -1001,8 +1014,9 @@ if __name__ == "__main__":
     fold=0
     v=0
     for fold in range(4):
-        val_res, _, _, _, _, _= train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False)
+        val_res, _, _, _, _, _, img_cls_res= train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False)
         v += val_res
+
     print(v/4)
 
     # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
