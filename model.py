@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Linear, init
 from torch_geometric.nn import GCNConv, SAGEConv, GraphConv, NNConv, GATConv, JumpingKnowledge
-from torch_geometric.nn import global_mean_pool, TopKPooling, global_max_pool
+from torch_geometric.nn import global_mean_pool, TopKPooling, global_max_pool, SAGPooling, GlobalAttention
 
 # own modules
 from GraphConvolutions import OwnGConv, OwnGConv2
@@ -92,7 +92,7 @@ class GCN(torch.nn.Module):
         # example:  x.shape = torch.Size([32, 2])
 
         # output = F.log_softmax(x, dim=-1)
-        output = F.log_softmax(x, dim=-1)           # get output between 0 and 1
+        output = F.softmax(x, dim=-1)           # get output between 0 and 1
         return output
 
     def __repr__(self):
@@ -177,7 +177,8 @@ class GCNWithJK(torch.nn.Module):
         x = self.lin2(x)
         # x.shape: torch.Size([num_graphs_in_batch, num_classes])
         # example: x.shape = torch.Size([32, 2])
-        return F.log_softmax(x, dim=-1)
+        # return F.log_softmax(x, dim=-1)
+        return F.softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -261,8 +262,8 @@ class GraphSAGE(torch.nn.Module):
         x = self.lin2(x)
         # x.shape:  torch.Size([num_graphs_in_batch, num_classes)
         # example:  x.shape = torch.Size([32, 2])
-        return F.log_softmax(x, dim=-1)
-
+        # return F.log_softmax(x, dim=-1)
+        return F.softmax(x, dim=-1)
     def __repr__(self):
         return self.__class__.__name__
 
@@ -314,7 +315,8 @@ class GraphSAGEWithJK(torch.nn.Module):
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
-        return F.log_softmax(x, dim=-1)
+        # return F.log_softmax(x, dim=-1)
+        return F.softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -399,7 +401,7 @@ class GATNet(torch.nn.Module):
         # example:  x.shape = torch.Size([32, 2])
 
         # output = F.log_softmax(x, dim=-1)
-        output = F.log_softmax(x, dim=-1)           # get output between 0 and 1
+        output = F.softmax(x, dim=-1)           # get output between 0 and 1
         return output
 
     def __repr__(self):
@@ -481,7 +483,8 @@ class GraphNN(torch.nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         x = F.relu(self.lin2(x))
 
-        return F.log_softmax(x, dim=-1)
+        # return F.log_softmax(x, dim=-1)
+        return F.softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -506,6 +509,8 @@ class NMP(torch.nn.Module):
         super(NMP, self).__init__()
         self.conv1 = NNConv(num_input_features, hidden, nn(1, num_input_features*hidden), aggr="add")
         self.convs = torch.nn.ModuleList()
+        self.att = GlobalAttention(Linear(hidden, 1))
+
         for i in range(num_layers - 1):
             self.convs.append(NNConv(hidden, hidden, nn(1, hidden*hidden), aggr="add"))
         self.lin1 = Linear(hidden, hidden)  # linear layer
@@ -517,7 +522,7 @@ class NMP(torch.nn.Module):
             conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GCNConv class
         self.lin1.reset_parameters()    # .reset_parameters() is method of the torch.nn.Linear class
         self.lin2.reset_parameters()
-
+        self.att.reset_parameters()
     def forward(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
 
@@ -528,14 +533,15 @@ class NMP(torch.nn.Module):
 
         # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
         # if there are 30 graphs in the batch and the feature vector has length 6, the resulting x has shape [30, 6]
-        x = global_mean_pool(x, batch)
-
+        # x = global_mean_pool(x, batch)
+        x = self.att(x, batch)
         #linear layers, activation function, dropout and softmax
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
 
-        output = F.log_softmax(x, dim=-1) #get output between 0 and 1
+        # output = F.log_softmax(x, dim=-1) #get output between 0 and 1
+        output = F.softmax(x, dim=-1)
         return output
 
     def __repr__(self):
@@ -552,6 +558,7 @@ class OwnGraphNN(torch.nn.Module):
         super(OwnGraphNN, self).__init__()
         self.conv1 = OwnGConv(num_input_features, hidden)
         self.convs = torch.nn.ModuleList()
+        self.att = GlobalAttention(Linear(num_layers*hidden,1))
         for i in range(num_layers - 1):
             self.convs.append(OwnGConv(hidden, hidden))
         self.jump = JumpingKnowledge(mode)
@@ -576,6 +583,7 @@ class OwnGraphNN(torch.nn.Module):
         self.lin1.reset_parameters()
         self.lin2.reset_parameters()
         self.lin3.reset_parameters()
+        self.att.reset_parameters()
         # init.xavier_uniform_(self.lin1.weight, gain=init.calculate_gain("relu"))
         # init.xavier_uniform_(self.lin2.weight, gain=init.calculate_gain("relu"))
         # init.xavier_uniform_(self.lin3.weight, gain=init.calculate_gain("relu"))
@@ -607,7 +615,8 @@ class OwnGraphNN(torch.nn.Module):
         x = self.jump(xs)
 
         # graph pooling
-        x = global_mean_pool(x, batch)
+        # x = global_mean_pool(x, batch)
+        x = self.att(x, batch)
         # x = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1) ##################
 
         # linear layer, ReLU non linearity, dropout
@@ -620,7 +629,8 @@ class OwnGraphNN(torch.nn.Module):
 
         # final linear layer, log_softmax
         x = self.lin3(x)
-        return F.log_softmax(x, dim=-1)
+        # return F.log_softmax(x, dim=-1)
+        return F.softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -701,9 +711,10 @@ class OwnGraphNN2(torch.nn.Module):
         x = F.relu(self.lin2(x))
         x = F.dropout(x, p=0.5, training=self.training)
 
-        # final linear layer, log_softmax
+        # final linear layer, softmax
         x = self.lin3(x)
-        return F.log_softmax(x, dim=-1)
+        # return F.log_softmax(x, dim=-1)
+        return F.softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
