@@ -150,9 +150,9 @@ if __name__ == "__main__":
         step = 33
     elif args.folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         in_features = 4
-        low = 4
-        high = 17
-        step = 4
+        low = 33
+        high = 133
+        step = 33
 
 
     # search space
