@@ -86,8 +86,10 @@ class DataConstructor():
         ###########################
         if "abnormal" in filename:
             graph_class = [1,0]
+            cls = 1
         elif "normal" in filename:
             graph_class = [0,1]
+            cls = 0
         else:
             print("the filename has not the correct format")
         y = torch.tensor([graph_class], dtype=torch.float)          # create a tensor needed to construct the graph
@@ -110,9 +112,13 @@ class DataConstructor():
         distances = [[item] for item in distances]                  # every tensor is packed into its own list
         edge_attr = torch.tensor(distances, dtype=torch.float)      # create a tensor needed to construct the graph
 
+        img_patch = [int(i) for i in re.findall(r"[0-9]+", filename)]
+        img_patch.append(cls)
+        graph_name = torch.tensor([img_patch], dtype=torch.float)
+
         # construct the graph
         #############################
-        graph = Data(x=x, y=y, edge_attr =edge_attr, edge_index=edge_index.t().contiguous(), pos=pos)
+        graph = Data(x=x, y=y, edge_attr =edge_attr, edge_index=edge_index.t().contiguous(), pos=pos, name=graph_name)
 
 
         return (graph)
@@ -261,6 +267,7 @@ if __name__ == "__main__":
     train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, raw=False, k=0) # get data lists for train, val and test
     print("number of graphs",len(train_data_list))         # how many graphs are inside the train_data_list
     print("first graph:",train_data_list[0])           # data object for first graph
+    print("graph from:", train_data_list[0].name)
     print("feature vec:",train_data_list[0].x[0])   # feature vec of first node
     print("data object for graph of img_0_0_normal:", raw_data.get_graph(folder, filename, raw=False, k=0))
 
