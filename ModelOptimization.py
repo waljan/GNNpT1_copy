@@ -40,9 +40,14 @@ def hyperopt(search_space, f, m, folder, augment, in_features, runs, iterations,
         for it in range(runs):                                     # train and validate the model 3 times to get an average accuracy
             print("run: "+ str(it) + " -------------------")
             # res, bool, _, _, _, _= train_and_val(**params, opt = True)     # train and validate the model using the given set of hyperparamters (**params)
-            res, bool, _, _, _, _ = train_and_val_1Fold(**params, fold=f, m=m, opt=True, folder=folder, augment=augment, batch_size=32, num_input_features = in_features, device=device)
+            res, bool, _, _, _, _, _ = train_and_val_1Fold(**params, fold=f, m=m, opt=True, folder=folder, augment=augment, batch_size=32, num_input_features = in_features, device=device)
             if bool:                                            # if the train_and_val function was stopped early, return the obtained score and go to the next param combination
                 val_acc.append(res)
+                print(res)
+                print(val_acc)
+                for k in range(runs-it-1):
+                    val_acc.append(0.5)
+                print(val_acc)
                 score = mean(val_acc)
                 print("Model: " + str(m) + "   Dataset: " + str(folder) + "   runs evalutated: " + str(it+1))
                 print("Parameters: " + str(params))
@@ -67,8 +72,7 @@ def hyperopt(search_space, f, m, folder, augment, in_features, runs, iterations,
         algo = tpe.suggest,             # Search algorithm: Tree of Parzen estimators
         max_evals = iterations,                # number of parameter combinations that should be evalutated
         trials = trials,                # by passing a trials object we can inspect all the return values that were calculated during the experiment
-        rstate=np.random.RandomState(111),
-        show_progressbar = False
+        rstate=np.random.RandomState(111)
     )
 
     print("done")
@@ -157,11 +161,11 @@ if __name__ == "__main__":
 
     # search space
     search_space = {
-        "num_epochs": pyll.scope.int(hp.quniform("num_epochs", 10, args.max_epochs, 10)),        # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q  in this case: 5,10,15,25,30
+        "num_epochs": pyll.scope.int(hp.quniform("num_epochs", 20, args.max_epochs, 10)),        # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q  in this case: 20, 30,...,max
         "num_layers": pyll.scope.int(hp.quniform("num_layers", 2, 6,1)),            # pyll.scope.int() converts the float output of hp.quiniform into an integer
         "hidden": pyll.scope.int(hp.quniform("hidden", low, high, step)),
-        "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.1)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
-        "step_size": pyll.scope.int(hp.quniform("step_size", 2,11, 2)),
+        "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.01)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
+        "step_size": pyll.scope.int(hp.quniform("step_size", 3, 7, 3)),
         "lr_decay": hp.uniform("lr_decay", 0.5, 1),                                 # hp.uniform(label, low, high) return a value uniformly between low and high
     }                                                                               # hp.choice(label, obptions) options is a list from which one element will be chosen
     # folder= "pT1_dataset/graphs/base-dataset/"
