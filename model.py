@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Linear, init
 from torch_geometric.nn import GCNConv, SAGEConv, GraphConv, NNConv, GATConv, JumpingKnowledge
-from torch_geometric.nn import global_mean_pool, TopKPooling, global_max_pool, SAGPooling, GlobalAttention
+from torch_geometric.nn import global_mean_pool, TopKPooling, global_max_pool, GlobalAttention, global_add_pool, Set2Set
 
 # own modules
 from GraphConvolutions import OwnGConv, OwnGConv2
@@ -37,8 +37,10 @@ class GCN(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
             self.convs.append(GCNConv(hidden, hidden))  # remaining GCNconv layers
-        self.lin1 = Linear(hidden, hidden)              # linear layer
-        self.lin2 = Linear(hidden, 2)                   # linear layer, output layer, 2 classes
+        # self.lin1 = Linear(hidden*num_layers, hidden*num_layers)              # linear layer
+        # self.lin2 = Linear(hidden*num_layers, 2)                   # linear layer, output layer, 2 classes
+        self.lin1 = Linear(3*hidden, hidden)              # linear layer
+        self.lin2 = Linear(hidden, 2)
 
     def reset_parameters(self):     # reset all conv and linear layers
         self.conv1.reset_parameters()
@@ -69,16 +71,19 @@ class GCN(torch.nn.Module):
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
         x = F.dropout(x, p=0.5, training=self.training)  ##################
-
+        # xs = x
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
             x = F.dropout(x, p=0.5, training=self.training)  ##################
+            # xs = torch.cat((xs,x),dim=1)
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
 
         # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
         # if there are 30 graphs in the batch and the feature vector has length hidden, the resulting x has shape [30, hidden]
-        x = global_mean_pool(x, batch)
+        # x = global_mean_pool(x, batch)
+        # x = global_add_pool(x, batch)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
 
@@ -122,9 +127,9 @@ class GCNWithJK(torch.nn.Module):
 
         self.jump = JumpingKnowledge(mode)
         if mode == 'cat': # concatenation
-            self.lin1 = Linear(num_layers * hidden, hidden)
+            self.lin1 = Linear(3*num_layers * hidden, hidden)
         else:
-            self.lin1 = Linear(hidden, hidden)
+            self.lin1 = Linear(3*hidden, hidden)
         self.lin2 = Linear(hidden, 2)
 
     def reset_parameters(self):
@@ -166,7 +171,9 @@ class GCNWithJK(torch.nn.Module):
         # x.shape: torch.Size([num_nodes_in_batch, num_layers * hidden])
         # example: x.shape = torch.Size([2490, 2*66])
 
-        x = global_mean_pool(x, batch)
+        # x = global_mean_pool(x, batch)
+        # x = global_add_pool(x, batch)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
         # x.shape: torch.Size([num_graphs_in_batch, 2*hidden])
         # example: x.shape = torch.Size([32, 2*66])
 
@@ -212,7 +219,7 @@ class GraphSAGE(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
             self.convs.append(SAGEConv(hidden, hidden))         # SAGEConv layers
-        self.lin1 = Linear(hidden, hidden)                      # linear layer
+        self.lin1 = Linear(3*hidden, hidden)                      # linear layer
         self.lin2 = Linear(hidden, 2)                           # linear layer
 
     def reset_parameters(self):
@@ -250,7 +257,9 @@ class GraphSAGE(torch.nn.Module):
             # example:  x.shape = troch.Size([2490,66])
             x = F.dropout(x, p=0.5, training=self.training)  ##################
 
-        x = global_mean_pool(x, batch)
+        # x = global_mean_pool(x, batch)
+        # x = global_add_pool(x, batch)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
 
@@ -288,9 +297,9 @@ class GraphSAGEWithJK(torch.nn.Module):
             self.convs.append(SAGEConv(hidden, hidden))
         self.jump = JumpingKnowledge(mode)
         if mode == 'cat':
-            self.lin1 = Linear(num_layers * hidden, hidden)
+            self.lin1 = Linear(3*num_layers * hidden, hidden)
         else:
-            self.lin1 = Linear(hidden, hidden)
+            self.lin1 = Linear(3*hidden, hidden)
         self.lin2 = Linear(hidden, 2)
 
     def reset_parameters(self):
@@ -311,7 +320,9 @@ class GraphSAGEWithJK(torch.nn.Module):
             x = F.dropout(x, p=0.5, training=self.training)  ##################
             xs += [x]
         x = self.jump(xs)
-        x = global_mean_pool(x, batch)
+        # x = global_mean_pool(x, batch)
+        # x = global_add_pool(x, batch)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
@@ -346,7 +357,7 @@ class GATNet(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
             self.convs.append(GATConv(hidden, hidden))  # remaining GATconv layers
-        self.lin1 = Linear(hidden, hidden)              # linear layer
+        self.lin1 = Linear(3*hidden, hidden)              # linear layer
         self.lin2 = Linear(hidden, 2)                   # linear layer, output layer, 2 classes
 
     def reset_parameters(self):     # reset all conv and linear layers
@@ -387,7 +398,9 @@ class GATNet(torch.nn.Module):
 
         # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
         # if there are 30 graphs in the batch and the feature vector has length hidden, the resulting x has shape [30, hidden]
-        x = global_mean_pool(x, batch)
+        # x = global_mean_pool(x, batch)
+        # x = global_add_pool(x, batch)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
 
@@ -501,18 +514,20 @@ class NMP(torch.nn.Module):
     x'i = Wxi + Sum(xj*h(eij))
     h() is a neural network
     eij is the edge feature of the edge that connects node i and j
-
-
-    Neural network on edge features doesnt make sense if an edge only has one feature
     """
     def __init__(self, num_layers, num_input_features, hidden, nn):
         super(NMP, self).__init__()
         self.conv1 = NNConv(num_input_features, hidden, nn(1, num_input_features*hidden), aggr="add")
         self.convs = torch.nn.ModuleList()
-        self.att = GlobalAttention(Linear(hidden, 1))
-
+        # self.att = GlobalAttention(Linear(hidden,1))
+        self.att = GlobalAttention(torch.nn.Sequential(Linear(hidden, hidden), torch.nn.ReLU(),
+                                                       Linear(hidden, 1)))
+        #                            torch.nn.Sequential(Linear(hidden,hidden), torch.nn.ReLU(),
+        #                                                Linear(hidden, hidden), torch.nn.ReLU())
+        #                            )
         for i in range(num_layers - 1):
             self.convs.append(NNConv(hidden, hidden, nn(1, hidden*hidden), aggr="add"))
+        # self.set2set = Set2Set(hidden, processing_steps=6)
         self.lin1 = Linear(hidden, hidden)  # linear layer
         self.lin2 = Linear(hidden, 2)       # linear layer, output layer, 2 classes
 
@@ -523,6 +538,8 @@ class NMP(torch.nn.Module):
         self.lin1.reset_parameters()    # .reset_parameters() is method of the torch.nn.Linear class
         self.lin2.reset_parameters()
         self.att.reset_parameters()
+        # self.set2set.reset_parameters()
+
     def forward(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
 
@@ -535,6 +552,9 @@ class NMP(torch.nn.Module):
         # if there are 30 graphs in the batch and the feature vector has length 6, the resulting x has shape [30, 6]
         # x = global_mean_pool(x, batch)
         x = self.att(x, batch)
+        # x = self.set2set(x, batch)
+        # x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
+        # x = global_add_pool(x, batch)
         #linear layers, activation function, dropout and softmax
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
@@ -558,7 +578,12 @@ class OwnGraphNN(torch.nn.Module):
         super(OwnGraphNN, self).__init__()
         self.conv1 = OwnGConv(num_input_features, hidden)
         self.convs = torch.nn.ModuleList()
-        self.att = GlobalAttention(Linear(num_layers*hidden,1))
+        # self.att = GlobalAttention(Linear(num_layers*hidden,1), Linear(num_layers*hidden, num_layers*hidden))
+        self.att = GlobalAttention(torch.nn.Sequential(Linear(num_layers*hidden, num_layers*hidden), torch.nn.ReLU(),
+                                                       Linear(num_layers*hidden, 1)))
+        #                            torch.nn.Sequential(Linear(num_layers*hidden, num_layers*hidden), torch.nn.ReLU(),
+        #                                                Linear(num_layers*hidden, num_layers*hidden), torch.nn.ReLU())
+        #                            )
         for i in range(num_layers - 1):
             self.convs.append(OwnGConv(hidden, hidden))
         self.jump = JumpingKnowledge(mode)
@@ -653,9 +678,8 @@ class OwnGraphNN2(torch.nn.Module):
         #     # self.lin1 = Linear(2*num_layers * hidden, 2*hidden)
         # else:
         #     self.lin1 = Linear(hidden, hidden)
-        self.lin1 = Linear(hidden, hidden)
-        self.lin2 = Linear(hidden, hidden)
-        self.lin3 = Linear(hidden, 2)
+        self.lin1 = Linear(3*hidden, hidden)
+        self.lin2 = Linear(hidden, 2)
         # self.bn_conv1 = torch.nn.BatchNorm1d(hidden)
         # self.bn_conv2 = torch.nn.BatchNorm1d(hidden)
 
@@ -669,7 +693,7 @@ class OwnGraphNN2(torch.nn.Module):
         # self.jump.reset_parameters()
         self.lin1.reset_parameters()
         self.lin2.reset_parameters()
-        self.lin3.reset_parameters()
+
         # init.xavier_uniform_(self.lin1.weight, gain=init.calculate_gain("relu"))
         # init.xavier_uniform_(self.lin2.weight, gain=init.calculate_gain("relu"))
         # init.xavier_uniform_(self.lin3.weight, gain=init.calculate_gain("relu"))
@@ -700,19 +724,15 @@ class OwnGraphNN2(torch.nn.Module):
         # x = self.jump(xs)
 
         # graph pooling
-        x = global_mean_pool(x, batch)
-        # x = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1) ##################
+        # x = global_mean_pool(x, batch)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1) ##################
 
         # linear layer, ReLU non linearity, dropout
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
 
-        # linear layer, ReLU non linearity, dropout
-        x = F.relu(self.lin2(x))
-        x = F.dropout(x, p=0.5, training=self.training)
-
         # final linear layer, softmax
-        x = self.lin3(x)
+        x = self.lin2(x)
         # return F.log_softmax(x, dim=-1)
         return F.softmax(x, dim=-1)
 
