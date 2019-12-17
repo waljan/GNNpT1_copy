@@ -22,10 +22,11 @@ class OwnGConv(MessagePassing):
 
     """
     def __init__(self, in_channels, out_channels):
-        super(OwnGConv, self).__init__(aggr="mean")
-        self.m_lin = torch.nn.Linear(in_channels, out_channels)
+        super(OwnGConv, self).__init__(aggr="add")
+        # self.m_lin = torch.nn.Linear(in_channels, out_channels)
         # self.u_lin = torch.nn.Linear(out_channels + in_channels, out_channels)
         self.u_lin = torch.nn.Linear(2*in_channels, out_channels)
+        self.u_lin2 = torch.nn.Linear(out_channels, out_channels)
         self.act = torch.nn.ReLU()
 
         # self.m_weight = torch.nn.Parameter(torch.Tensor(in_channels, out_channels))
@@ -37,6 +38,7 @@ class OwnGConv(MessagePassing):
     def reset_parameters(self):
         self.m_lin.reset_parameters()
         self.u_lin.reset_parameters()
+        self.u_lin2.reset_parameters()
 
         # inits.glorot(self.m_lin.weight)
         # init.constant_(self.m_lin.bias, 0.01)
@@ -65,6 +67,8 @@ class OwnGConv(MessagePassing):
         new_embedding = torch.cat([aggr_out, x], dim=1)
         new_embedding = self.u_lin(new_embedding)
         new_embedding = self.act(new_embedding)
+        new_embedding = self.u_lin2(new_embedding)
+        new_embedding = self.act(new_embedding)
         # new_embedding = torch.nn.functional.dropout(new_embedding, p=0.5, training=self.training)
 
         # return new_embedding
@@ -80,14 +84,14 @@ class OwnGConv2(MessagePassing):
     """
 
     def __init__(self, in_channels, out_channels):
-        super(OwnGConv2, self).__init__(aggr="mean")
+        super(OwnGConv2, self).__init__(aggr="add")
         self.in_channels = in_channels
         self.out_channels = out_channels
 
         self.u_lin1 = torch.nn.Linear(in_channels*2, out_channels)
         # self.u_lin2 = torch.nn.Linear(out_channels + out_channels, out_channels)
-        # self.u_lin2 = torch.nn.Linear(out_channels, out_channels)
-        self.u_lin2 = torch.nn.Linear(in_channels+in_channels, out_channels)
+        self.u_lin2 = torch.nn.Linear(out_channels, out_channels)
+        # self.u_lin2 = torch.nn.Linear(in_channels+in_channels, out_channels)
 
 
 
@@ -131,6 +135,8 @@ class OwnGConv2(MessagePassing):
 
         new_embedding = torch.cat([aggr_out, x], dim=1)
         new_embedding = self.u_lin1(new_embedding)
+        new_embedding = self.act(new_embedding)
+        new_embedding = self.u_lin2(new_embedding)
         new_embedding = self.act(new_embedding)
 
 
