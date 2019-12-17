@@ -36,7 +36,7 @@ class OwnGConv(MessagePassing):
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.m_lin.reset_parameters()
+        # self.m_lin.reset_parameters()
         self.u_lin.reset_parameters()
         self.u_lin2.reset_parameters()
 
