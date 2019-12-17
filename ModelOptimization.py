@@ -43,11 +43,8 @@ def hyperopt(search_space, f, m, folder, augment, in_features, runs, iterations,
             res, bool, _, _, _, _, _ = train_and_val_1Fold(**params, fold=f, m=m, opt=True, folder=folder, augment=augment, batch_size=32, num_input_features = in_features, device=device)
             if bool:                                            # if the train_and_val function was stopped early, return the obtained score and go to the next param combination
                 val_acc.append(res)
-                print(res)
-                print(val_acc)
                 for k in range(runs-it-1):
                     val_acc.append(0.5)
-                print(val_acc)
                 score = mean(val_acc)
                 print("Model: " + str(m) + "   Dataset: " + str(folder) + "   runs evalutated: " + str(it+1))
                 print("Parameters: " + str(params))
