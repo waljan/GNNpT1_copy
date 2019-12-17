@@ -433,6 +433,8 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
                                                               device)  # compute the accuracy for the test data
             val_accs.append(val_acc)
             val_losses.append(val_loss)
+            TP_TN_FP_FN_res = TP_TN_FP_FN
+            val_res = val_acc
 
         # train the model
         train(model, train_loader, optimizer, crit, device)
@@ -464,7 +466,7 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
                 #     print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
             if bad_epoch == 5:
                 # print("bad params, best val acc:", val_res)
-                return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))     # the boolean tells that train_and_val was stopped early (bad parameter combination)
+                return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), None)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
 
 
     ####################################################################
@@ -623,7 +625,7 @@ if __name__ == "__main__":
 
     # choose dataset
     folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "pT1_dataset/graphs/base-dataset/"
+    # folder = "pT1_dataset/graphs/base-dataset/"
 
     # choose device
     device = torch.device("cpu")
@@ -631,7 +633,7 @@ if __name__ == "__main__":
 
     # choose one of the models by commenting out the others
 
-    # m = "GCN"
+    m = "GCN"
     # m = "GCNWithJK"
     m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
@@ -639,7 +641,7 @@ if __name__ == "__main__":
     # m = "OwnGraphNN2"
     # m = "GATNet"  # at the moment only for base
 
-    # m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
+    m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
 
     # m = "GraphNN" # no suitable hyperparameters found so far
 
@@ -687,7 +689,7 @@ if __name__ == "__main__":
             # Baby-sitting
             batch_size = 32
             num_epochs = 40
-            num_layers = 3
+            num_layers = 2
             num_input_features = 4
             hidden = 32
             lr = 0.005
@@ -702,16 +704,37 @@ if __name__ == "__main__":
             # Time elapsed:  8008.898519039154
             # Parameter combinations evaluated:  200
 
+
+# train size: 260   val size: 130
+# Model: GraphSAGE   Dataset: pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/   runs evalutated: 10
+# Parameters: {'hidden': 66, 'lr': 0.004087834869477245, 'lr_decay': 0.9281944375040574, 'num_epochs': 20, 'num_layers': 5, 'step_size': 3}
+# score: 0.8125
+
+            # # Baby-sitting
+            # batch_size = 32
+            # num_epochs = 35
+            # num_layers = 3
+            # num_input_features = 4
+            # hidden = 32
+            # lr = 0.01
+            # lr_decay = 0.8
+            # step_size = 4
+            # augment=False
+
             # Baby-sitting
             batch_size = 32
-            num_epochs = 35
-            num_layers = 3
+            num_epochs = 40
+            num_layers = 5
             num_input_features = 4
-            hidden = 32
-            lr = 0.01
-            lr_decay = 0.8
-            step_size = 4
-            augment=False
+            hidden = 66
+            lr = 0.0009
+            lr_decay = 0.9812
+            step_size = 6
+            augment = False
+
+#      Model: GraphSAGE   Dataset: pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/   runs evalutated: 10
+# Parameters: {'hidden': 66, 'lr': 0.000956029296349167, 'lr_decay': 0.8124996943800818, 'num_epochs': 30, 'num_layers': 5, 'step_size': 6}
+# score: 0.85546875
 
         if m=="GraphSAGEWithJK":
             ##### Results hyperopt 200 iterations; 3 runs of 4-fold cross validation per parameter combination
@@ -773,10 +796,10 @@ if __name__ == "__main__":
             num_epochs = 40
             num_layers = 2
             num_input_features = 4
-            hidden = 32
-            lr = 0.005
+            hidden = 16
+            lr = 0.001
             lr_decay = 0.8
-            step_size = 4
+            step_size = 2
             augment = False
 
         if m == "NMP":
@@ -786,20 +809,40 @@ if __name__ == "__main__":
             # Time elapsed:  34481.11261844635
             # Parameter combinations evaluated:  200
 
-            # HyperOpt
+            # batch_size = 32
+            # num_epochs = 50
+            # num_layers =3
+            # num_input_features = 4
+            # hidden = 32
+            # lr = 0.005
+            # lr_decay = 0.95
+            # step_size = 2
+            # augment = False
+
             batch_size = 32
-            num_epochs = 50
-            num_layers =5
+            num_epochs = 30
+            num_layers = 2
             num_input_features = 4
-            hidden = 16
-            lr = 0.0087
-            lr_decay = 0.928
-            step_size = 2
+            hidden = 33
+            lr = 0.009
+            lr_decay = 0.5
+            step_size = 6
             augment = False
 
+# Model: NMP   Dataset: pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/   runs evalutated: 10
+# Parameters: {'hidden': 33, 'lr': 0.009860755226144085, 'lr_decay': 0.5024977490178795, 'num_epochs': 30, 'num_layers': 2, 'step_size': 6}
+# score: 0.83046875
+
         if m == "GATNet":
-            # TODO: parameters
-            pass
+            batch_size = 32
+            num_epochs = 50
+            num_layers = 3
+            num_input_features = 4
+            hidden = 32
+            lr = 0.005
+            lr_decay = 0.95
+            step_size = 2
+            augment = False
 
 ######################################################################
 
@@ -984,15 +1027,15 @@ if __name__ == "__main__":
             # Time elapsed: 4900.7668533325195
             # Parameter combinations evaluated: 200
 
-            # HyperOpt
+
             batch_size = 32
             num_epochs = 30
             num_layers = 2
             num_input_features = 33
-            hidden = 132
-            lr = 0.00585
-            lr_decay = 0.6988
-            step_size = 4
+            hidden = 66
+            lr = 0.0005
+            lr_decay = 0.95
+            step_size = 2
             augment = False
 
          ############### augment
@@ -1013,11 +1056,14 @@ if __name__ == "__main__":
     # Not yet working: train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
     fold=0
     v=0
+    print("Model:", m)
     for fold in range(4):
         val_res, _, _, _, _, _, img_cls_res= train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False)
         v += val_res
 
     print(v/4)
 
+
+    # not working
     # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
     # plot_multiple_runs(10, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
