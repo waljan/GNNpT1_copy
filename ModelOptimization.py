@@ -68,8 +68,8 @@ def hyperopt(search_space, f, m, folder, augment, in_features, runs, iterations,
         space = search_space,           # searchspace for the parameters
         algo = tpe.suggest,             # Search algorithm: Tree of Parzen estimators
         max_evals = iterations,                # number of parameter combinations that should be evalutated
-        trials = trials,                # by passing a trials object we can inspect all the return values that were calculated during the experiment
-        rstate=np.random.RandomState(111)
+        trials = trials#,                # by passing a trials object we can inspect all the return values that were calculated during the experiment
+        #rstate=np.random.RandomState(111)   
     )
 
     print("done")
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     # augment=False
 
 
-    results = hyperopt(search_space, f=args.fold, m=args.model, folder=args.folder, augment=args.augment, in_features = in_features, device=args.device, runs=args.runs, iterations=args.iterations)
+    hyperopt(search_space, f=args.fold, m=args.model, folder=args.folder, augment=args.augment, in_features = in_features, device=args.device, runs=args.runs, iterations=args.iterations)
     # print(type(results))
 
 

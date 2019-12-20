@@ -83,7 +83,7 @@ class GCN(torch.nn.Module):
         # if there are 30 graphs in the batch and the feature vector has length hidden, the resulting x has shape [30, hidden]
         # x = global_mean_pool(x, batch)
         # x = global_add_pool(x, batch)
-        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch),global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
 
@@ -259,7 +259,8 @@ class GraphSAGE(torch.nn.Module):
 
         # x = global_mean_pool(x, batch)
         # x = global_add_pool(x, batch)
-        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
+        
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch),global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
 
@@ -477,7 +478,7 @@ class GraphNN(torch.nn.Module):
         # x.shape:  torch.Size([..., hidden)])
         # example:  x.shape = troch.Size([1929, 66])
 
-        xs = [torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1)]
+        xs = [torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch)], dim=1)]
         # xs[0].shape:  torch.Size([num_graphs_in_batch, 2*hidden])
         # example:      xs[0].shape = torch.Size([32,2*66])
         for conv, pool in zip(self.convs, self.pools):
@@ -487,7 +488,7 @@ class GraphNN(torch.nn.Module):
             x, edge_index, _, batch, _, _ = pool(x, edge_index, None, batch)
             # with every layer the number of nodes per graph will be even further reduced
             # x.shape: torch.Size([ ..., hidden])
-            xs.append(torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1))
+            xs.append(torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch)], dim=1))
         x = sum(xs)
         # x.shape:  torch.Size([num_graphs_in_batch, 2*hidden])
         # example:  x.shape = torch.Size([32, 2*66])
@@ -520,8 +521,7 @@ class NMP(torch.nn.Module):
         self.conv1 = NNConv(num_input_features, hidden, nn(1, num_input_features*hidden), aggr="add")
         self.convs = torch.nn.ModuleList()
         # self.att = GlobalAttention(Linear(hidden,1))
-        self.att = GlobalAttention(torch.nn.Sequential(Linear(hidden, hidden), torch.nn.ReLU(),
-                                                       Linear(hidden, 1)))
+        self.att = GlobalAttention(torch.nn.Sequential(Linear(hidden, hidden), torch.nn.ReLU(), Linear(hidden, 1)))
         #                            torch.nn.Sequential(Linear(hidden,hidden), torch.nn.ReLU(),
         #                                                Linear(hidden, hidden), torch.nn.ReLU())
         #                            )
@@ -553,7 +553,7 @@ class NMP(torch.nn.Module):
         # x = global_mean_pool(x, batch)
         x = self.att(x, batch)
         # x = self.set2set(x, batch)
-        # x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
+        #x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch)], dim=1)
         # x = global_add_pool(x, batch)
         #linear layers, activation function, dropout and softmax
         x = F.relu(self.lin1(x))
@@ -578,9 +578,8 @@ class OwnGraphNN(torch.nn.Module):
         super(OwnGraphNN, self).__init__()
         self.conv1 = OwnGConv(num_input_features, hidden)
         self.convs = torch.nn.ModuleList()
-        # self.att = GlobalAttention(Linear(num_layers*hidden,1), Linear(num_layers*hidden, num_layers*hidden))
-        self.att = GlobalAttention(torch.nn.Sequential(Linear(num_layers*hidden, num_layers*hidden), torch.nn.ReLU(),
-                                                       Linear(num_layers*hidden, 1)))
+        #self.att = GlobalAttention(Linear(num_layers*hidden,1), Linear(num_layers*hidden, num_layers*hidden))
+        self.att = GlobalAttention(torch.nn.Sequential(Linear(num_layers*hidden, num_layers*hidden), torch.nn.ReLU(), Linear(num_layers*hidden, 1)))
         #                            torch.nn.Sequential(Linear(num_layers*hidden, num_layers*hidden), torch.nn.ReLU(),
         #                                                Linear(num_layers*hidden, num_layers*hidden), torch.nn.ReLU())
         #                            )
@@ -642,7 +641,7 @@ class OwnGraphNN(torch.nn.Module):
         # graph pooling
         # x = global_mean_pool(x, batch)
         x = self.att(x, batch)
-        # x = torch.cat([global_max_pool(x, batch), global_mean_pool(x, batch)], dim=1) ##################
+        #x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch)], dim=1) ##################
 
         # linear layer, ReLU non linearity, dropout
         x = F.relu(self.lin1(x))
@@ -724,8 +723,8 @@ class OwnGraphNN2(torch.nn.Module):
         # x = self.jump(xs)
 
         # graph pooling
-        # x = global_mean_pool(x, batch)
-        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1) ##################
+        #x = global_mean_pool(x, batch)
+        x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch),  global_max_pool(x, batch)], dim=1) ##################
 
         # linear layer, ReLU non linearity, dropout
         x = F.relu(self.lin1(x))

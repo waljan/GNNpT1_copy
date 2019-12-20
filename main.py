@@ -72,7 +72,6 @@ def evaluate(model, val_loader, crit, device):
             # labels.append(label)    # append the label to the list of all labels
 
             correct_pred += np.sum(predicted_classes[:, 0] == label[:, 0])
-
             # count the false negatives and false positives
             false_idx = np.argwhere(predicted_classes[:,0]!=label[:,0]).reshape(-1)
             truth = label[false_idx,:]
@@ -394,7 +393,6 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
     # initialize val loader
     val_loader = DataLoader(val_data_list, batch_size=batch_size, shuffle=True)
 
-
     # initialize the model
     if m == "GCN":
         model = GCN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)  # initialize the model
@@ -423,29 +421,30 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
     bad_epoch = 0
     # compute training and validation accuracy for every epoch
     for epoch in range(num_epochs):
+        
         if epoch == 0:
+            
             train_acc, loss , _,  _ = evaluate(model, train_loader, crit,
                                              device)  # compute the accuracy for the training data
             train_accs.append(train_acc)
             losses.append(loss)
-
+            
             val_acc, val_loss, img_name, TP_TN_FP_FN  = evaluate(model, val_loader, crit,
                                                               device)  # compute the accuracy for the test data
             val_accs.append(val_acc)
             val_losses.append(val_loss)
             TP_TN_FP_FN_res = TP_TN_FP_FN
             val_res = val_acc
-
+            img_name_res = img_name
         # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
-
+        
         train_acc , loss, _, _ = evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
         train_accs.append(train_acc)
         losses.append(loss)
-
+        
         val_acc, val_loss, img_name, TP_TN_FP_FN = evaluate(model, val_loader, crit, device)  # compute the accuracy for the validation data
-        # TODO: Save model if val_acc is current best
         # if len(val_accs) == 0:
         #     preds_res = predictions
         #     targets_res = labels
@@ -462,10 +461,10 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
             if epoch % 1 == 0:
                 if val_acc<0.6:
                     bad_epoch +=1
-                # for param_group in optimizer.param_groups:
-                #     print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
+                #for param_group in optimizer.param_groups:
+                    #print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
             if bad_epoch == 5:
-                # print("bad params, best val acc:", val_res)
+                #print("bad params, best val acc:", val_res)
                 return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), None)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
 
 
