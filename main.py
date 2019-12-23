@@ -8,6 +8,8 @@ from torch.optim.lr_scheduler import StepLR
 from statistics import mean
 import random
 from scipy.stats import t
+import os
+import csv
 import argparse
 
 
@@ -107,6 +109,34 @@ def evaluate(model, val_loader, crit, device):
     acc = correct_pred / graph_count
     avg_loss = loss_all/graph_count
     return acc , avg_loss, img_name, TP_TN_FP_FN
+
+def get_opt_param(model, folder, fold):
+    """
+    reads a csv file to  return the optimal parameters for a given model, dataset and data-split
+    """
+    if folder == "pT1_dataset/graphs/base-dataset/":
+        path = "Hyperparameters/base/" + m + "/"
+    elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+        path = "Hyperparameters/paper/" + m + "/"
+    k = "fold" + str(fold)
+
+    for f in os.listdir(path):
+        if not f.startswith("."):
+            if os.path.isfile(path + f) and k in f:
+                with open(path + f, "r") as file:
+                    hp = list(csv.reader(file))
+                    hp=hp[1]
+                    folder = hp[0]
+                    model = hp[1]
+                    fold = int(hp[2])
+                    opt_hidden = int(float(hp[5]))
+                    opt_lr = float(hp[6])
+                    opt_lr_decay = float(hp[7])
+                    opt_num_epochs = int(float(hp[8]))
+                    opt_num_layers = int(float(hp[9]))
+                    opt_step_size = int(float(hp[10]))
+    return folder, model, fold, opt_hidden, opt_lr, opt_lr_decay, opt_num_epochs, opt_num_layers, opt_step_size
+
 
 def plot_acc_sep(train_accs, val_accs, test_accs):
     x = range(len(train_accs))
@@ -315,6 +345,37 @@ def train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden
     print("average val accuracy:", mean(val_res))
     return(mean(val_res), False, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses))   # the boolean tells that train_and_val was completed (good param combination)
 
+def train_and_test_1Fold(model, folder, fold, device):
+    if folder == "pT1_dataset/graphs/base-dataset/":
+        num_input_features = 33
+        folder_short = "base/"
+    elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+        num_input_features = 4
+        folder_short = "paper/"
+    batch_size = 32
+    # if not os.path.exists("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt"):
+    #     print("get hyperparams and train model")
+    _, _, _, hidden , lr, lr_decay, num_epochs, num_layers, step_size = get_opt_param(model, folder, fold)
+    val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=True)
+    print("val acc:", val_res)
+    if bool:
+        print("training stoped early (bad Hyperparameters)")
+    # load the data lists and split them into train, val, test and train-augmented
+    # all_lists = load_obj(folder, augment=10, sd=0.01)           ################################# choose which augmentation file
+    all_lists = load_obj(folder, augment=0, sd=0)
+    all_test_lists = all_lists[2]
+    test_data_list = all_test_lists[fold]
+    test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=True)
+
+    model = torch.load("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
+    crit = torch.nn.CrossEntropyLoss(reduction="sum")
+    test_acc, test_loss, img_name, TP_TN_FP_FN = evaluate(model, test_loader, crit, device)
+    print("test_acc:", test_acc)
+    print(TP_TN_FP_FN)
+    return test_acc
+
+
+
 
 
 def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False):
@@ -337,6 +398,11 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
     :param opt:
     :return:
     """
+    if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+        folder_short = "paper/"
+    if folder == "pT1_dataset/graphs/base-dataset/":
+        folder_short = "base/"
+
     #load the data lists and split them into train, val, test and train-augmented
     # all_lists = load_obj(folder, augment=10, sd=0.01)           ################################# choose which augmentation file
     all_lists = load_obj(folder, augment=0, sd=0)
@@ -380,10 +446,10 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
         test_data_list = all_test_lists[fold]
         # print("train size: " + str(len(train_data_list)) + "   val size: " + str(len(val_data_list)))
 
-    if testing:
-        for entry in val_data_list:
-            train_data_list.append(entry)       # add val to train data
-        val_data_list = test_data_list          # use test_data_list for measuring the performance
+    # if testing:
+    #     for entry in val_data_list:
+    #         train_data_list.append(entry)       # add val to train data
+    #     val_data_list = test_data_list          # use test_data_list for measuring the performance
 
     print("train size: " + str(len(train_data_list)) + "   val size: " + str(len(val_data_list)))
 
@@ -421,14 +487,14 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
     bad_epoch = 0
     # compute training and validation accuracy for every epoch
     for epoch in range(num_epochs):
-        
+
         if epoch == 0:
-            
+
             train_acc, loss , _,  _ = evaluate(model, train_loader, crit,
                                              device)  # compute the accuracy for the training data
             train_accs.append(train_acc)
             losses.append(loss)
-            
+
             val_acc, val_loss, img_name, TP_TN_FP_FN  = evaluate(model, val_loader, crit,
                                                               device)  # compute the accuracy for the test data
             val_accs.append(val_acc)
@@ -436,14 +502,16 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
             TP_TN_FP_FN_res = TP_TN_FP_FN
             val_res = val_acc
             img_name_res = img_name
+            if testing:
+                torch.save(model.state_dict(), "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
         # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
-        
+
         train_acc , loss, _, _ = evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
         train_accs.append(train_acc)
         losses.append(loss)
-        
+
         val_acc, val_loss, img_name, TP_TN_FP_FN = evaluate(model, val_loader, crit, device)  # compute the accuracy for the validation data
         # if len(val_accs) == 0:
         #     preds_res = predictions
@@ -453,6 +521,8 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
             img_name_res = img_name
             TP_TN_FP_FN_res = TP_TN_FP_FN
             val_res = val_acc
+            if testing:
+                torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
 
         val_accs.append(val_acc)
         val_losses.append(val_loss)
@@ -512,13 +582,13 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
 
     # compute number of false positives, false negatives, true positives and true negatives
     ######################################################################
-
-        print("true positives: ", TP_TN_FP_FN_res[0])
-        print("true negatives: ", TP_TN_FP_FN_res[1])
-        print("false positives: ", TP_TN_FP_FN_res[2])
-        print("false_negatives: ", TP_TN_FP_FN_res[3])
-        print("FP images:", img_name_res[2])
-        print("FN images:", img_name_res[3])
+        if not testing:
+            print("true positives: ", TP_TN_FP_FN_res[0])
+            print("true negatives: ", TP_TN_FP_FN_res[1])
+            print("false positives: ", TP_TN_FP_FN_res[2])
+            print("false_negatives: ", TP_TN_FP_FN_res[3])
+            print("FP images:", img_name_res[2])
+            print("FN images:", img_name_res[3])
 
     # print("best val accuracy:", val_res)
     return(val_res, False, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), img_name_res)   # the boolean tells that train_and_val was completed (good param combination)
@@ -620,11 +690,10 @@ def plot_multiple_runs(num_runs, batch_size, num_epochs, num_layers, num_input_f
 
 if __name__ == "__main__":
     import time
-    import csv
 
     # choose dataset
     folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
-    # folder = "pT1_dataset/graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/base-dataset/"
 
     # choose device
     device = torch.device("cpu")
@@ -638,10 +707,8 @@ if __name__ == "__main__":
     # m = "GraphSAGEWithJK"
     # m = "OwnGraphNN"
     # m = "OwnGraphNN2"
-    # m = "GATNet"  # at the moment only for base
-
-    m = "NMP"  # doesnt make much sense to pass one edge feature through a neural network
-
+    m = "GATNet"
+    # m = "NMP"
     # m = "GraphNN" # no suitable hyperparameters found so far
 
 
@@ -1053,16 +1120,36 @@ if __name__ == "__main__":
 
 
     # Not yet working: train_and_test(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder)
-    fold=0
-    v=0
-    print("Model:", m)
-    for fold in range(4):
-        val_res, _, _, _, _, _, img_cls_res= train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False)
-        v += val_res
+    # fold=0
+    # v=0
+    # print("Model:", m)
+    # for fold in range(4):
+    #     val_res, _, _, _, _, _, img_cls_res= train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=False)
+    #     v += val_res
+    #
+    # print(v/4)
 
-    print(v/4)
-
-
+    # print(get_opt_param(m, folder, fold=0))
+    # choose dataset
+    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    folder = "pT1_dataset/graphs/base-dataset/"
+    # choose device
+    device = torch.device("cpu")
+    device = torch.device("cuda")
+    # choose one of the models by commenting out the others
+    m = "GCN"
+    m = "GCNWithJK"
+    m = "GraphSAGE"
+    m = "GraphSAGEWithJK"
+    m = "OwnGraphNN"
+    m = "OwnGraphNN2"
+    m = "GATNet"
+    # m = "NMP"
+    # m = "GraphNN" # no suitable hyperparameters found so far
+    tacc=0
+    for fold in range (4):
+        tacc += train_and_test_1Fold(m, folder, fold=fold, device="cuda")
+    print("avg test acc:", tacc/4)
     # not working
     # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
     # plot_multiple_runs(10, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
