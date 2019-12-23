@@ -1,0 +1,2 @@
+dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size
+pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/,OwnGraphNN2,2,100,10,99.0,0.0003894163023330385,0.9718623828462902,40.0,4.0,3.0
