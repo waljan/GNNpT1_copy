@@ -5,7 +5,7 @@ from torch_geometric.data import DataLoader
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
-from statistics import mean
+from statistics import mean, stdev
 import random
 from scipy.stats import t
 import os
@@ -81,10 +81,10 @@ def evaluate(model, val_loader, crit, device):
             for t in truth:
                 if t[0] == 1:
                     TP_TN_FP_FN[3] +=1
-                    img_name[3].append(data.name[false_idx][c])
+                    img_name[3].append(data.name[false_idx][c].tolist())
                 if t[0]  == 0:
                     TP_TN_FP_FN[2] +=1
-                    img_name[2].append(data.name[false_idx][c])
+                    img_name[2].append(data.name[false_idx][c].tolist())
                 c+=1
 
             true_idx = np.argwhere(predicted_classes[:,0]==label[:,0]).reshape(-1)
@@ -93,10 +93,10 @@ def evaluate(model, val_loader, crit, device):
             for t in truth:
                 if t[0] == 1:
                     TP_TN_FP_FN[0] +=1
-                    img_name[0].append(data.name[true_idx][c])
+                    img_name[0].append(data.name[true_idx][c].tolist())
                 if t[0] == 0:
                     TP_TN_FP_FN[1] += 1
-                    img_name[1].append(data.name[true_idx][c])
+                    img_name[1].append(data.name[true_idx][c].tolist())
                 c+=1
             loss = crit(predT, torch.max(labelT, 1)[1].long()) # compute the loss between output and label
             # loss = crit(predT, labelT)
@@ -356,7 +356,7 @@ def train_and_test_1Fold(model, folder, fold, device):
     # if not os.path.exists("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt"):
     #     print("get hyperparams and train model")
     _, _, _, hidden , lr, lr_decay, num_epochs, num_layers, step_size = get_opt_param(model, folder, fold)
-    val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=False, testing=True)
+    val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=True, testing=True)
     print("val acc:", val_res)
     if bool:
         print("training stoped early (bad Hyperparameters)")
@@ -372,8 +372,53 @@ def train_and_test_1Fold(model, folder, fold, device):
     test_acc, test_loss, img_name, TP_TN_FP_FN = evaluate(model, test_loader, crit, device)
     print("test_acc:", test_acc)
     print(TP_TN_FP_FN)
-    return test_acc
+    return test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN
 
+
+def test(model, folder, runs, device):
+    """
+    write train accs and val accs of all runs to one csv file per fold
+    :param model: model to train validate and test
+    :param folder: dataset to use
+    :param runs: number of times train, val and test is repeated
+    :param device: "cuda" or "cpu"
+    :return:
+    """
+    all_test_accs = []
+    test_accs_per_fold = [[],[],[],[]]
+    if folder == "pT1_dataset/graphs/base-dataset/":
+        folder_short = "base/"
+    elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
+        folder_short = "paper/"
+
+    path_test = "out/" + folder_short + model + "_test_data.csv"
+
+    for fold in range(4):
+        print("Fold:", fold)
+        path_train = "out/" + folder_short + model + "_train_data_fold" + str(fold) + ".csv"
+        path_val = "out/" + folder_short + model + "_val_data_fold" + str(fold) + ".csv"
+
+        with open(path_train, "w") as train_file, open(path_val, "w") as val_file:
+            train_writer = csv.writer(train_file)
+            val_writer = csv.writer(val_file)
+
+            for it in range(runs):
+                test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN = train_and_test_1Fold(model, folder, fold=fold, device="cuda")
+
+                all_test_accs.append(test_acc)
+                test_accs_per_fold[fold].append(test_acc)
+
+                train_writer.writerow([i for i in train_accs])
+                val_writer.writerow([i for i in val_accs])
+
+    with open(path_test, "w") as test_file:
+        test_writer = csv.writer(test_file)
+        for fold in range(4):
+            test_writer.writerow(test_accs_per_fold[fold])
+
+    print("Results on Testset:")
+    print("mean:", "\t",  mean(all_test_accs)*100)
+    print("standard deviation:", "\t", stdev(all_test_accs)*100)
 
 
 
@@ -503,7 +548,7 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
             val_res = val_acc
             img_name_res = img_name
             if testing:
-                torch.save(model.state_dict(), "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
+                torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
         # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
@@ -1138,18 +1183,23 @@ if __name__ == "__main__":
     device = torch.device("cuda")
     # choose one of the models by commenting out the others
     m = "GCN"
-    m = "GCNWithJK"
-    m = "GraphSAGE"
-    m = "GraphSAGEWithJK"
-    m = "OwnGraphNN"
-    m = "OwnGraphNN2"
-    m = "GATNet"
+    # m = "GCNWithJK"
+    # m = "GraphSAGE"
+    # m = "GraphSAGEWithJK"
+    # m = "OwnGraphNN"
+    # m = "OwnGraphNN2"
+    # m = "GATNet"
     # m = "NMP"
     # m = "GraphNN" # no suitable hyperparameters found so far
     tacc=0
-    for fold in range (4):
-        tacc += train_and_test_1Fold(m, folder, fold=fold, device="cuda")
-    print("avg test acc:", tacc/4)
+    runs=5
+
+    # for fold in range (4):
+    #     for it in range(runs):
+    #         tacc += train_and_test_1Fold(m, folder, fold=fold, device="cuda")
+    # print("avg test acc:", tacc/4)
     # not working
     # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
     # plot_multiple_runs(10, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
+
+    test(m,folder,runs,device)
