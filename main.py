@@ -1199,7 +1199,16 @@ if __name__ == "__main__":
     # m = "NMP"
     # m = "GraphNN" # no suitable hyperparameters found so far
     tacc=0
-    runs=5
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", "-m", type=str, required=True)
+    parser.add_argument("--folder", type=str, required=True)
+    parser.add_argument("--runs", type=int, default=100)
+    parser.add_argument("--device",  type=str, default="cuda")
+    args = parser.parse_args()
+
+    # runs=5
 
     # for fold in range (4):
     #     for it in range(runs):
@@ -1209,4 +1218,4 @@ if __name__ == "__main__":
     # train_and_val(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m=m, folder=folder, augment=augment)
     # plot_multiple_runs(10, batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment)
 
-    test(m,folder,runs,device)
+    test(args.model, args.folder, args.runs, args.device)
