@@ -410,9 +410,16 @@ def test(model, folder, runs, device):
 
                 train_writer.writerow([i for i in train_accs])
                 val_writer.writerow([i for i in val_accs])
+                if it == runs-1:
+                    avg = mean(test_accs_per_fold[fold])
+                    sd = stdev(test_accs_per_fold[fold])
+                    test_accs_per_fold[fold].append(avg)
+                    test_accs_per_fold[fold].append(sd)
+                    test_accs_per_fold[fold].reverse()
 
     with open(path_test, "w") as test_file:
         test_writer = csv.writer(test_file)
+        test_writer.writerow([stdev(all_test_accs), mean(all_test_accs)])
         for fold in range(4):
             test_writer.writerow(test_accs_per_fold[fold])
 
