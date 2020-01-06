@@ -117,7 +117,8 @@ def hyperopt(search_space, f, m, folder, augment, in_features, runs, iterations,
         direc = "base/"
     elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         direc = "paper/"
-    path = "./out/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-" + strftime("%Y%m%d-%H%M%S") + ".csv"
+    # path = "./out/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-" + strftime("%Y%m%d-%H%M%S") + ".csv"
+    path = "./Hyperparameters/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100.csv"
     with open(path, "w") as file:
         fieldnames = ["dataset", "model","fold", "num_evals", "num_runs_per_eval", "hidden", "lr", "lr_decay", "num_epochs", "num_layers", "step_size"]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
@@ -158,7 +159,7 @@ if __name__ == "__main__":
 
     # search space
     search_space = {
-        "num_epochs": pyll.scope.int(hp.quniform("num_epochs", 20, args.max_epochs, 10)),        # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q  in this case: 20, 30,...,max
+        "num_epochs": pyll.scope.int(hp.quniform("num_epochs", args.max_epochs-2, args.max_epochs, 10)),        # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q  in the case of low=20 and high = 41 and q = 10 case: 20, 30,40
         "num_layers": pyll.scope.int(hp.quniform("num_layers", 2, 6,1)),            # pyll.scope.int() converts the float output of hp.quiniform into an integer
         "hidden": pyll.scope.int(hp.quniform("hidden", low, high, step)),
         "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.01)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
