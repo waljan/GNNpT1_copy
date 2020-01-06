@@ -356,7 +356,7 @@ def train_and_test_1Fold(model, folder, fold, device):
     # if not os.path.exists("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt"):
     #     print("get hyperparams and train model")
     _, _, _, hidden , lr, lr_decay, num_epochs, num_layers, step_size = get_opt_param(model, folder, fold)
-    val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, augment, fold, opt=True, testing=True)
+    val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, hidden, device, lr, step_size, lr_decay, model, folder, augment, fold, opt=True, testing=True)
     print("val acc:", val_res)
     if bool:
         print("training stoped early (bad Hyperparameters)")
@@ -367,7 +367,7 @@ def train_and_test_1Fold(model, folder, fold, device):
     test_data_list = all_test_lists[fold]
     test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=True)
 
-    model = torch.load("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
+    model = torch.load("Parameters/" + folder_short + model + "_fold" + str(fold) + ".pt")
     crit = torch.nn.CrossEntropyLoss(reduction="sum")
     test_acc, test_loss, img_name, TP_TN_FP_FN = evaluate(model, test_loader, crit, device)
     print("test_acc:", test_acc)
@@ -395,21 +395,36 @@ def test(model, folder, runs, device):
 
     for fold in range(4):
         print("Fold:", fold)
-        path_train = "out/" + folder_short + model + "_train_data_fold" + str(fold) + ".csv"
-        path_val = "out/" + folder_short + model + "_val_data_fold" + str(fold) + ".csv"
 
-        with open(path_train, "w") as train_file, open(path_val, "w") as val_file:
-            train_writer = csv.writer(train_file)
-            val_writer = csv.writer(val_file)
+        path_train_acc = "out/" + folder_short + model + "/" + model + "_train_acc_fold" + str(fold) + ".csv"
+        path_train_loss = "out/" + folder_short + model + "/" + model + "_train_loss_fold" + str(fold) + ".csv"
+
+        path_val_acc = "out/" + folder_short + model + "/" + model + "_val_acc_fold" + str(fold) + ".csv"
+        path_val_loss = "out/" + folder_short + model + "/" + model + "_val_loss_fold" + str(fold) + ".csv"
+
+        with open(path_train_acc, "w") as train_acc_file, \
+                open(path_train_loss, "w") as train_loss_file, \
+                open(path_val_acc, "w") as val_acc_file, \
+                open(path_val_loss, "w") as val_loss_file:
+
+            train_acc_writer = csv.writer(train_acc_file)
+            train_loss_writer = csv.writer(train_loss_file)
+
+            val_acc_writer = csv.writer(val_acc_file)
+            val_loss_writer = csv.writer(val_loss_file)
 
             for it in range(runs):
-                test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN = train_and_test_1Fold(model, folder, fold=fold, device="cuda")
+                test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN = train_and_test_1Fold(model, folder, fold=fold, device=device)
 
                 all_test_accs.append(test_acc)
                 test_accs_per_fold[fold].append(test_acc)
 
-                train_writer.writerow([i for i in train_accs])
-                val_writer.writerow([i for i in val_accs])
+                train_acc_writer.writerow([i for i in train_accs])
+                train_loss_writer.writerow([i for i in train_losses])
+
+                val_acc_writer.writerow([i for i in val_accs])
+                val_loss_writer.writerow([i for i in val_losses])
+
                 if it == runs-1:
                     avg = mean(test_accs_per_fold[fold])
                     sd = stdev(test_accs_per_fold[fold])
@@ -579,15 +594,15 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, num_input_features, 
         val_accs.append(val_acc)
         val_losses.append(val_loss)
 
-        if opt:
-            if epoch % 1 == 0:
-                if val_acc<0.6:
-                    bad_epoch +=1
-                #for param_group in optimizer.param_groups:
-                    #print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
-            if bad_epoch == 5:
-                #print("bad params, best val acc:", val_res)
-                return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), None)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
+        # if opt and not testing:
+        #     if epoch % 1 == 0:
+        #         if val_acc<0.6:
+        #             bad_epoch +=1
+        #         #for param_group in optimizer.param_groups:
+        #             #print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
+        #     if bad_epoch == 5:
+        #         #print("bad params, best val acc:", val_res)
+        #         return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), None)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
 
 
     ####################################################################
