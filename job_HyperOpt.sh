@@ -9,8 +9,9 @@
 
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:gtx1080ti:1
+#SBATCH --constraint=gtx1080
 #SBATCH --mem=4000M
-#SBATCH --time=20:00:00
+#SBATCH --time=40:00:00
 
 #SBATCH --no-requeue
 
@@ -21,7 +22,7 @@ conda activate GNNEnv
 #module load GCC/7.3.0-2.30
 #module load GCC/8.3.0
 module load GCC/5.4.0-2.26
-module load gcccuda
+#module load gcccuda
 module load CUDA/10.1.243 
 
 #python -c "import torch; print(torch.__version__)"
