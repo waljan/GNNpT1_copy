@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
 from statistics import mean, stdev
 import random
-from scipy.stats import t
 import os
 import csv
 import argparse
@@ -108,7 +107,7 @@ def evaluate(model, val_loader, crit, device):
 
     acc = correct_pred / graph_count
     avg_loss = loss_all/graph_count
-    return acc , avg_loss, img_name, TP_TN_FP_FN
+    return acc, avg_loss, img_name, TP_TN_FP_FN
 
 def get_opt_param(m, folder, fold):
     """
@@ -135,8 +134,8 @@ def get_opt_param(m, folder, fold):
                     opt_num_epochs = int(float(hp[8]))
                     opt_num_layers = int(float(hp[9]))
                     opt_step_size = int(float(hp[10]))
-                    # opt_weight_decay = float(hp[11]) # TODO: weight decay
-    return folder, m, fold, opt_hidden, opt_lr, opt_lr_decay, opt_num_epochs, opt_num_layers, opt_step_size#, opt_weight_decay
+                    opt_weight_decay = float(hp[11])
+    return folder, m, fold, opt_hidden, opt_lr, opt_lr_decay, opt_num_epochs, opt_num_layers, opt_step_size, opt_weight_decay
 
 
 def plot_acc_sep(train_accs, val_accs, test_accs):
@@ -368,15 +367,14 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
     for epoch in range(num_epochs):
 
         if epoch == 0:
-
-            train_acc, loss , _,  _ = evaluate(model, train_loader, crit,
+            train_acc, loss, _,  _ = evaluate(model, train_loader, crit,
                                              device)  # compute the accuracy for the training data
             train_accs.append(train_acc)
             losses.append(loss)
 
             val_acc, val_loss, img_name, TP_TN_FP_FN  = evaluate(model, val_loader, crit,
                                                               device)  # compute the accuracy for the test data
-            running_val_acc = np.asarray([val_acc, val_acc])
+            running_val_acc = np.asarray([0, 0, val_acc])
             val_accs.append(val_acc)
             val_losses.append(val_loss)
             TP_TN_FP_FN_res = TP_TN_FP_FN
@@ -387,25 +385,32 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
         # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
-
+        # ge train acc and loss
         train_acc , loss, _, _ = evaluate(model, train_loader, crit, device)  # compute the accuracy for the training data
         train_accs.append(train_acc)
         losses.append(loss)
 
+        # get validation acc and loss
         val_acc, val_loss, img_name, TP_TN_FP_FN = evaluate(model, val_loader, crit, device)  # compute the accuracy for the validation data
         running_val_acc[0] = running_val_acc[1]
-        running_val_acc[1] = val_acc
+        running_val_acc[1] = running_val_acc[2]
+        running_val_acc[2] = val_acc
+
         # if len(val_accs) == 0:
         #     preds_res = predictions
         #     targets_res = labels
         #     val_res = val_acc
 
-        if np.mean(running_val_acc) > np.mean(val_res):         # if this is current best save the list of predictions and corresponding labels
+        if np.mean(running_val_acc) > np.mean(val_res) and not testing:         # if this is current best save the list of predictions and corresponding labels
             img_name_res = img_name
             TP_TN_FP_FN_res = TP_TN_FP_FN
             val_res = running_val_acc
-            if testing:
-                torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
+
+        if running_val_acc[2] > val_res[2] and testing:  # if this is current best save the list of predictions and corresponding labels
+            img_name_res = img_name
+            TP_TN_FP_FN_res = TP_TN_FP_FN
+            val_res = running_val_acc
+            torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
 
         val_accs.append(val_acc)
         val_losses.append(val_loss)
@@ -420,7 +425,7 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
         #         #print("bad params, best val acc:", val_res)
         #         return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), None)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
 
-    if stdev(losses[-20]) < 0.05:
+    if stdev(losses[-20:]) < 0.05 and mean(train_accs[-20:])<0.55:
         boolean = True
     else:
         boolean = False
