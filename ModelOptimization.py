@@ -98,8 +98,8 @@ def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_feat
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow({"dataset": folder, "model": m, "fold": f, "num_evals": iterations, "num_runs_per_eval": runs,
-                            "hidden": best_param["hidden"], "lr": best_param["lr"], "lr_decay": best_param["lr_decay"],
-                            "num_epochs": best_param["num_epochs"], "num_layers": best_param["num_layers"],
+                            "hidden": hidden, "lr": best_param["lr"], "lr_decay": best_param["lr_decay"],
+                            "num_epochs": num_epochs, "num_layers": num_layers,
                             "step_size": best_param["step_size"], "weight_decay": best_param["weight_decay"], "val_acc": min(loss)* -1
                          })
 
