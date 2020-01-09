@@ -41,13 +41,13 @@ def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_feat
         for it in range(runs):                                     # train and validate the model 3 times to get an average accuracy
             print("run: "+ str(it) + " -------------------")
 
-            res, bool, _, _, _, _, _ = train_and_val_1Fold(**params, hidden=hidden, num_layers=num_layers,
+            res, _, _, _, _, _, _ = train_and_val_1Fold(**params, hidden=hidden, num_layers=num_layers,
                                                            num_epochs=num_epochs, fold=f, m=m, opt=True,
                                                            folder=folder, augment=False, batch_size=32,
                                                            num_input_features=in_features, device=device)
 
-            val_acc.append(res[0])
-            val_acc.append(res[1])
+            val_acc.append(np.mean(res))
+
         score = mean(val_acc)                                   # compute the average accuracy from the 10 train and validation runs
         print("Model: " + str(m) + "   Dataset: " + str(folder) + "   runs evalutated: " + str(it+1))
         print("Parameters: " + str(params))
@@ -94,14 +94,14 @@ def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_feat
     path = "./Hyperparameters/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100.csv"
     with open(path, "w") as file:
         fieldnames = ["dataset", "model","fold", "num_evals", "num_runs_per_eval", "hidden", "lr", "lr_decay",
-                      "num_epochs", "num_layers", "step_size", "weight_decay"]
+                      "num_epochs", "num_layers", "step_size", "weight_decay", "val_acc"] # TODO: add val_acc to the function that reads this file
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerow({"dataset": folder, "model": m, "fold": f, "num_evals": iterations, "num_runs_per_eval": runs,
                             "hidden": best_param["hidden"], "lr": best_param["lr"], "lr_decay": best_param["lr_decay"],
                             "num_epochs": best_param["num_epochs"], "num_layers": best_param["num_layers"],
-                            "step_size": best_param["step_size"], "weight_decay": best_param["weight_decay"]})
-                            # TODO: add val_res (loss)
+                            "step_size": best_param["step_size"], "weight_decay": best_param["weight_decay"], "val_acc": min(loss)* -1
+                         })
 
     # return trials       # the trials object contains all the return values calculated during the experiment
 
