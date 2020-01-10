@@ -116,12 +116,12 @@ def get_opt_param(m, folder, fold):
     if folder == "pT1_dataset/graphs/base-dataset/":
         path = "Hyperparameters/base/" + m + "/"
     elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
-        path = "Hyperparameters/paper/" + m + "/"
+        path = "Hyperparameters/paper/" + m + "/"   # TODO remove old csv files or make the path more specific
     k = "fold" + str(fold)
 
     for f in os.listdir(path):
         if not f.startswith("."):
-            if os.path.isfile(path + f) and k in f:
+            if os.path.isfile(path + f) and k in f and f.endswith("it100.csv"):
                 with open(path + f, "r") as file:
                     hp = list(csv.reader(file))
                     hp=hp[1]
@@ -165,6 +165,7 @@ def train_and_test_1Fold(m, folder, fold, device):
     # if not os.path.exists("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt"):
     #     print("get hyperparams and train model")
     _, _, _, hidden , lr, lr_decay, num_epochs, num_layers, step_size, weight_decay = get_opt_param(m, folder, fold)
+    bool=True
     while bool:
         val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, fold, opt=True, testing=True)
         if bool:
@@ -377,8 +378,8 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
             running_val_acc = np.asarray([0, 0, val_acc])
             val_accs.append(val_acc)
             val_losses.append(val_loss)
-            TP_TN_FP_FN_res = TP_TN_FP_FN
-            val_res = running_val_acc
+            TP_TN_FP_FN_res = np.copy(TP_TN_FP_FN)
+            val_res = np.copy(running_val_acc)
             img_name_res = img_name
             if testing:
                 torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
@@ -403,13 +404,15 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
 
         if np.mean(running_val_acc) > np.mean(val_res) and not testing:         # if this is current best save the list of predictions and corresponding labels
             img_name_res = img_name
-            TP_TN_FP_FN_res = TP_TN_FP_FN
-            val_res = running_val_acc
-
+            TP_TN_FP_FN_res = np.copy(TP_TN_FP_FN)
+            val_res = np.copy(running_val_acc)
+        # print(running_val_acc)
+        # print(val_res)
+        # print()
         if running_val_acc[2] > val_res[2] and testing:  # if this is current best save the list of predictions and corresponding labels
             img_name_res = img_name
-            TP_TN_FP_FN_res = TP_TN_FP_FN
-            val_res = running_val_acc
+            TP_TN_FP_FN_res = np.copy(TP_TN_FP_FN)
+            val_res = np.copy(running_val_acc)
             torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
 
         val_accs.append(val_acc)
