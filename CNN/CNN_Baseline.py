@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from statistics import stdev, mean
 
 # own modules
 from Dataset_construction import DataConstructor as dc
@@ -173,7 +174,6 @@ def evaluate(model, val_loader, crit, device):
         for data, label in val_loader: # iterate over every batch in validation training set
             data = data.to(device) # trainsfer data to device
             predT = model(data)#.detach().cpu().numpy()   # pass the data through the model and store the predictions in a numpy array
-                                                        # for a batch of 30 graphs, the array has shape [30,2]
             pred = predT.detach().cpu().numpy()
             predicted_classes = (pred == pred.max(axis=1)[:,None]).astype(int)
 
@@ -185,9 +185,9 @@ def evaluate(model, val_loader, crit, device):
             img_count += len(data)
             batch_count +=1
 
-    acc = correct_pred / img_count
+    avg_acc = correct_pred / img_count
     avg_loss = loss_all/img_count
-    return acc, avg_loss
+    return avg_acc, avg_loss
 
 class CNN(nn.Module):
     """
@@ -196,23 +196,26 @@ class CNN(nn.Module):
     def __init__(self, img_size):
         super(CNN, self).__init__()
         self.final_img_size = int(img_size/8)
-        self.lin1_in = 64
-        self.out_conv1= 8
-        self.out_conv2 = 16
+        self.out_conv1= 16
+        self.out_conv2 = 32
+        self.out_conv3 = 64
         self.cnn_layers = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=self.out_conv1, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.1),
             nn.Conv2d(in_channels=self.out_conv1, out_channels=self.out_conv2, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(in_channels=self.out_conv2, out_channels=self.lin1_in, kernel_size=3, stride=1, padding=1),
+            nn.Dropout2d(0.1),
+            nn.Conv2d(in_channels=self.out_conv2, out_channels=self.out_conv3, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2)
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout2d(0.1),
         )
         self.linear_layers = nn.Sequential(
             nn.Dropout(p=0.5),
-            nn.Linear(in_features=self.final_img_size*self.final_img_size*self.lin1_in, out_features=self.final_img_size*self.final_img_size*16),
+            nn.Linear(in_features=self.final_img_size*self.final_img_size*self.out_conv3, out_features=self.final_img_size*self.final_img_size*16),
             nn.ReLU(),
             nn.Dropout(p=0.5),
             nn.Linear(in_features=self.final_img_size*self.final_img_size*16, out_features=2),
@@ -221,18 +224,23 @@ class CNN(nn.Module):
 
     def forward(self, input):
         output = self.cnn_layers(input)
-        output_flat = output.reshape(-1, self.final_img_size*self.final_img_size*self.lin1_in)
+        output_flat = output.reshape(-1, self.final_img_size*self.final_img_size*self.out_conv3)
         output = self.linear_layers(output_flat)
         return output
 
-def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay, device):
-    img_size = 64
+def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay, device, plotting=False, testing=False):
+    img_size = 128
     train_IDs, val_IDs, test_IDs = train_val_test_split(fold)
-    transform = transforms.Compose([transforms.Resize((img_size,img_size)),
+    train_transform = transforms.Compose([transforms.Resize((img_size,img_size)),
+                                    # transforms.RandomHorizontalFlip(),
+                                    # transforms.RandomRotation((0,360)),
+                                    # transforms.RandomVerticalFlip(),
                                     transforms.ToTensor()])
-    train_data = ImageDataset(train_IDs, transform)
-    val_data = ImageDataset(val_IDs, transform)
-    test_data = ImageDataset(test_IDs, transform)
+    val_transform = transforms.Compose([transforms.Resize((img_size,img_size)),
+                                    transforms.ToTensor()])
+    train_data = ImageDataset(train_IDs, train_transform)
+    val_data = ImageDataset(val_IDs, val_transform)
+    test_data = ImageDataset(test_IDs, val_transform)
 
     # data loaders
     batchsize = 64
@@ -240,27 +248,76 @@ def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay,
     val_loader = DataLoader(val_data, batchsize, shuffle=True)
     test_loader = DataLoader(test_data, batchsize, shuffle=True)
 
+    train_accs = []  # will contain the training accuracy of every epoch
+    val_accs = []  # will contain the validation accuracy of every epoch
+
+    train_losses = []  # will contain the training loss of every epoch
+    val_losses = []  # will contain the validation loss of every epoch
+
     # initialize model
     print("initialize CNN")
     model = CNN(img_size).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)  # define the optimizer, weight_decay corresponds to L2 regularization
+    # optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=lr_decay)  # learning rate decay
     crit = torch.nn.CrossEntropyLoss(reduction="sum")
 
     for epoch in range(num_epochs):
+        if epoch == 0: # get train and val accs before training
+            train_acc, train_loss = evaluate(model, train_loader, crit, device)
+            val_acc, val_loss = evaluate(model, val_loader, crit, device)
+
+            train_accs.append(train_acc)
+            train_losses.append(train_loss)
+            val_accs.append(val_acc)
+            val_losses.append(val_loss)
+            running_val_acc = np.array([0,0,val_acc])
+            val_res = np.copy(running_val_acc)
+
+            if testing:
+                torch.save(model, "Parameters/CNN/CNN_fold"+str(fold) + ".pt")
+        # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
 
+        # evalutate the model
         train_acc, train_loss = evaluate(model, train_loader, crit, device)
-        acc, loss = evaluate(model, val_loader, crit, device)
+        val_acc, val_loss = evaluate(model, val_loader, crit, device)
+        train_accs.append(train_acc)
+        train_losses.append(train_loss)
+        val_accs.append(val_acc)
+        val_losses.append(val_loss)
+        running_val_acc[0] = running_val_acc[1]
+        running_val_acc[1] = running_val_acc[2]
+        running_val_acc[2] = val_acc
+
+        if np.mean(running_val_acc) > np.mean(val_res) and not testing:
+            val_res = np.copy(running_val_acc)
+        if running_val_acc[2] > val_res[2] and testing:
+            val_res = np.copy(running_val_acc)
+            torch.save(model,"Parameters/CNN/CNN_fold"+str(fold) + ".pt")
         for param_group in optimizer.param_groups:
-            print("Epoch: {:03d}, lr: {:.5f}, train_loss: {:.5f}, val_loss: {:.5f}, train_acc: {:.5f}, val_acc: {:.5f}".format(epoch, param_group["lr"], train_loss, loss, train_acc, acc))
+            print("Epoch: {:03d}, lr: {:.5f}, train_loss: {:.5f}, val_loss: {:.5f}, train_acc: {:.5f}, val_acc: {:.5f}".format(epoch, param_group["lr"], train_loss, val_loss, train_acc, val_acc))
 
-        # print("lr:", lr)
-        # print("epoch:", epoch, "\tval_acc:", acc, "\tvall_loss:", loss)
+    if stdev(train_losses[-20:]) < 0.05 and mean(train_accs[-20:]) < 0.55:
+        boolean = True
+        print("Oops")
+    else:
+        boolean = False
 
-
+    # # plot learning curves
+    if plotting:
+        x = np.arange(0,len(train_accs))
+        plt.subplot(2,1,1)
+        plt.plot(x, train_accs, color="r")
+        plt.ylim(0.5, 1)
+        plt.plot(x, val_accs, color="g")
+        plt.subplot(2,1,2)
+        plt.plot(x, train_losses, color="r")
+        plt.plot(x, val_losses, color="g")
+        plt.show()
+    return(val_res, boolean, np.asarray(train_accs), np.asarray(val_accs), np.asarray(train_losses), np.asarray(val_losses))
 
 
 if __name__ == "__main__":
@@ -296,4 +353,4 @@ if __name__ == "__main__":
 
 
     # plot_all_images()
-    train_and_val_1Fold(fold=0, num_epochs=20, lr=0.001, lr_decay=0.8, step_size=3, weight_decay=0.01, device="cuda")
+    train_and_val_1Fold(fold=0, num_epochs=30, lr=0.001, lr_decay=0.8, step_size=3, weight_decay=0.01, device="cuda", plotting=True)
