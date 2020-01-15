@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import absolute_import
 import torch
 import torch.nn as nn
 from torchvision import transforms
@@ -8,9 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from statistics import stdev, mean
-
-# own modules
-from Dataset_construction import DataConstructor as dc
+import csv
 
 
 
@@ -67,8 +66,19 @@ def train_val_test_split(fold):
     :return: three (train, val, test) lists containing the IDs of the images,
                 the ID is like he path to the image, ID looks like: img0/img0_0_normal/img0_0_normal-image.jpg
     """
-    d=dc()
-    dic = d.split(fold)     # get a dictionary containing all the needed information to split the data
+    # open the csv file
+    with open("pT1_dataset/dataset_split.csv") as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=",")
+        line_count = 0
+        dic = {}
+
+        # iterate over every row of the csv file
+        for row in csv_reader:
+            if line_count == 0:  # ignore the header
+                line_count += 1
+            else:  # use a dictionary to save the information about how to split the data into train test and val
+                dic[row[0]] = [row[fold + 1]]   # get a dictionary containing all the needed information to split the data
+
     path = "pT1_dataset/dataset/"
     train_IDs, val_IDs, test_IDs = [],[],[]
     for patient in os.listdir(path):        # iterate over the diretory (iterate over every patient)
@@ -241,7 +251,7 @@ def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay,
     train_data = ImageDataset(train_IDs, train_transform)
     val_data = ImageDataset(val_IDs, val_transform)
     test_data = ImageDataset(test_IDs, val_transform)
-
+    print("train size: " + str(len(train_data)) + "   val size: " + str(len(val_data)))
     # data loaders
     batchsize = 64
     train_loader = DataLoader(train_data, batchsize, shuffle=True, drop_last=True)
@@ -297,12 +307,13 @@ def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay,
         if running_val_acc[2] > val_res[2] and testing:
             val_res = np.copy(running_val_acc)
             torch.save(model,"Parameters/CNN/CNN_fold"+str(fold) + ".pt")
-        for param_group in optimizer.param_groups:
-            print("Epoch: {:03d}, lr: {:.5f}, train_loss: {:.5f}, val_loss: {:.5f}, train_acc: {:.5f}, val_acc: {:.5f}".format(epoch, param_group["lr"], train_loss, val_loss, train_acc, val_acc))
+        if plotting:
+            for param_group in optimizer.param_groups:
+                print("Epoch: {:03d}, lr: {:.5f}, train_loss: {:.5f}, val_loss: {:.5f}, train_acc: {:.5f}, val_acc: {:.5f}".format(epoch, param_group["lr"], train_loss, val_loss, train_acc, val_acc))
 
     if stdev(train_losses[-20:]) < 0.05 and mean(train_accs[-20:]) < 0.55:
         boolean = True
-        print("Oops")
+        # print("Oops")
     else:
         boolean = False
 
