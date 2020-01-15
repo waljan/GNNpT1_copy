@@ -5,7 +5,7 @@ from statistics import mean
 from time import time
 import csv
 # own modules
-from CNN.CNN_Baseline import train_and_val_1Fold
+from CNN_Baseline import train_and_val_1Fold
 
 
 
