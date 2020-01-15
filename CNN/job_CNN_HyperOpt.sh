@@ -40,11 +40,10 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 ############################################
 
-for FOLD in 0 1 2 3
-do
-  echo "CNN, fold:" $FOLD
-  python CNN/CNN_ModelOptimization.py --fold=$FOLD --device="cuda" --runs=10 --iterations=100
-done
 
-# run using: bash CNN/job_CNN_HyperOpt.sh
-# or on UBELIX: sbatch CNN/job_CNN_HyperOpt.sh
+echo "CNN, fold:" $1
+python CNN/CNN_ModelOptimization.py --fold=$1 --device="cuda" --runs=10 --iterations=100
+
+
+# run using: bash CNN/job_CNN_HyperOpt.sh 0
+# or on UBELIX: sbatch CNN/job_CNN_HyperOpt.sh 0
