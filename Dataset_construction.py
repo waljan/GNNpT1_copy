@@ -2,9 +2,9 @@
 
 import xml.etree.ElementTree as ET
 import torch
-from torch_geometric.data import Data
-from torch_geometric.data import InMemoryDataset
-from torch_geometric.data import DataLoader
+from torch_geometric.data import Data, DataLoader
+from torch_geometric.utils import to_undirected
+
 import os
 import csv
 import re
@@ -32,7 +32,9 @@ class DataConstructor():
 
         # create a tensor needed to construct the graph
         edge_index = torch.tensor(edge_list, dtype=torch.long)
-
+        # print(edge_index.size())
+        edge_index = to_undirected(edge_index.t().contiguous())
+        # print(edge_index.size())
         img = re.split("_", filename)[0]
         name = re.split("\.", filename)[0]
 
@@ -98,8 +100,8 @@ class DataConstructor():
         # get the edge feature (length of the edge based on the node coordinates)
         ############################
         distances = []
-        for edge in edge_index:             # iterate over every edge
-            positions = pos[edge]           # get the coordinates of the nodes connected by the edge
+        for i in range(len(edge_index[0])):             # iterate over every edge
+            positions = pos[[edge_index[0,i].item(), edge_index[1,i].item()]]           # get the coordinates of the nodes connected by the edge
             # distances.append([torch.dist(positions[0], positions[1], p=2)])         # compute L2 norm  (if distances are not normalized use square brackets directly)
 
             distances.append(torch.dist(positions[0], positions[1], p=2))       # compute L2 norm; distances is now a list of tensors
@@ -118,8 +120,7 @@ class DataConstructor():
 
         # construct the graph
         #############################
-        graph = Data(x=x, y=y, edge_attr =edge_attr, edge_index=edge_index.t().contiguous(), pos=pos, name=graph_name)
-
+        graph = Data(x=x, y=y, edge_attr=edge_attr, edge_index=edge_index, pos=pos, name=graph_name)
 
         return (graph)
 
@@ -260,7 +261,7 @@ if __name__ == "__main__":
 
     # make csv files containing the mean and sd of all attributes
     ##################################
-    # raw_data.compute_mean_sd_per_split()
+    raw_data.compute_mean_sd_per_split()
 
 
 
