@@ -32,14 +32,13 @@ def save_obj(folder, augment, sd=1):
     print("create data lists")
     for k in range(4):                      # 4 iterations for the 4 fold cross validation
         print("k:", k)
-        train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, k=k)  # split the data into train val and test
+        train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, k=k, raw = False)  # split the data into train val and test
 
         # augment data by adding/subtracting small random values from node features
         if augment > 1:
             train_data_list_aug = aug(train_data_list, n=augment, sd=sd)
 
             # normalize node features
-            # TODO: how is the original data normalized? per split, or all included?
             ####
             first_it = True
             for graph in train_data_list_aug:       # iterate over every graph
@@ -59,12 +58,6 @@ def save_obj(folder, augment, sd=1):
         all_lists[0].append(train_data_list)
         all_lists[1].append(val_data_list)
         all_lists[2].append(test_data_list)
-
-        # TODO: edge feature normalization for all data lists.
-        # normalize edge features
-        ###
-
-        ###
 
     # save the data lists
     if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
@@ -115,16 +108,16 @@ if __name__ == "__main__":
 
     ## choose folder
     ################################
-    # folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
-    folder = "pT1_dataset/graphs/base-dataset/"
+    folder = "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+    # folder = "pT1_dataset/graphs/base-dataset/"
 
     ## choose augment
     ###############################
-    augment = 10
+    augment = 0
 
     # choose sd
     ##############################
-    sd = 0.01
+    sd = 0
     # sd = 0.5
 
     if save:
