@@ -91,7 +91,7 @@ def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_feat
     elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         direc = "paper/"
     # path = "./out/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-" + strftime("%Y%m%d-%H%M%S") + ".csv"
-    path = "./Hyperparameters/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100.csv"
+    path = "./Hyperparameters/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-undirected.csv"
     with open(path, "w") as file:
         fieldnames = ["dataset", "model","fold", "num_evals", "num_runs_per_eval", "hidden", "lr", "lr_decay",
                       "num_epochs", "num_layers", "step_size", "weight_decay", "val_acc"] # TODO: add val_acc to the function that reads this file
