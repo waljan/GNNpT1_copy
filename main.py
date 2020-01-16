@@ -2,6 +2,7 @@
 
 import torch
 from torch_geometric.data import DataLoader
+from torch_geometric.utils import to_undirected
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
@@ -121,7 +122,7 @@ def get_opt_param(m, folder, fold):
 
     for f in os.listdir(path):
         if not f.startswith("."):
-            if os.path.isfile(path + f) and k in f and f.endswith("it100.csv"):
+            if os.path.isfile(path + f) and k in f and f.endswith("it100.csv"): # TODO adjust path
                 with open(path + f, "r") as file:
                     hp = list(csv.reader(file))
                     hp=hp[1]
@@ -154,7 +155,7 @@ def plot_train_test(train_accs, test_accs):
     plt.show()
 
 
-def train_and_test_1Fold(m, folder, fold, device):
+def train_and_test_1Fold(m, folder, fold, it, device):
     if folder == "pT1_dataset/graphs/base-dataset/":
         num_input_features = 33
         folder_short = "base/"
@@ -167,9 +168,22 @@ def train_and_test_1Fold(m, folder, fold, device):
     _, _, _, hidden , lr, lr_decay, num_epochs, num_layers, step_size, weight_decay = get_opt_param(m, folder, fold)
     bool=True
     while bool:
-        val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, fold, opt=True, testing=True)
+        val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size,
+                                                                                                          num_epochs,
+                                                                                                          num_layers,
+                                                                                                          weight_decay,
+                                                                                                          num_input_features,
+                                                                                                          hidden,
+                                                                                                          device,
+                                                                                                          lr,
+                                                                                                          step_size,
+                                                                                                          lr_decay,
+                                                                                                          m,
+                                                                                                          folder,
+                                                                                                          fold,
+                                                                                                          opt=True, testing=True, it=it)
         if bool:
-            print("rerun due to dead neurons")
+            print("FOLD" + str(fold) + "rerun due to dead neurons")
     print("val acc:", val_res[1])
 
     # load the data lists and split them into train, val, test and train-augmented
@@ -179,7 +193,7 @@ def train_and_test_1Fold(m, folder, fold, device):
     test_data_list = all_test_lists[fold]
     test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=True)
 
-    model = torch.load("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
+    model = torch.load("Parameters/" + folder_short + m + "_fold" + str(fold) + "it"+str(it)+".pt")
     crit = torch.nn.CrossEntropyLoss(reduction="sum")
     test_acc, test_loss, img_name, TP_TN_FP_FN = evaluate(model, test_loader, crit, device)
     print("test_acc:", test_acc)
@@ -214,10 +228,14 @@ def test(m, folder, runs, device):
         path_val_acc = "out/" + folder_short + m + "/" + m + "_val_acc_fold" + str(fold) + ".csv"
         path_val_loss = "out/" + folder_short + m + "/" + m + "_val_loss_fold" + str(fold) + ".csv"
 
+        path_TP_TN_FP_FN = "out/" + folder_short + m + "/" + m + "_TP_TN_FP_FN_fold" + str(fold) + ".csv"
+
+        # write train acc, train loss, val acc and val loss to separate csv files
         with open(path_train_acc, "w") as train_acc_file, \
                 open(path_train_loss, "w") as train_loss_file, \
                 open(path_val_acc, "w") as val_acc_file, \
-                open(path_val_loss, "w") as val_loss_file:
+                open(path_val_loss, "w") as val_loss_file, \
+                open(path_TP_TN_FP_FN, "w") as cls_file:
 
             train_acc_writer = csv.writer(train_acc_file)
             train_loss_writer = csv.writer(train_loss_file)
@@ -225,8 +243,10 @@ def test(m, folder, runs, device):
             val_acc_writer = csv.writer(val_acc_file)
             val_loss_writer = csv.writer(val_loss_file)
 
+            cls_writer = csv.writer(cls_file)
+
             for it in range(runs):
-                test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN = train_and_test_1Fold(m, folder, fold=fold, device=device)
+                test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN = train_and_test_1Fold(m, folder, fold=fold, device=device, it=it)
 
                 all_test_accs.append(test_acc)
                 test_accs_per_fold[fold].append(test_acc)
@@ -237,13 +257,22 @@ def test(m, folder, runs, device):
                 val_acc_writer.writerow([i for i in val_accs])
                 val_loss_writer.writerow([i for i in val_losses])
 
+                final_TPTNFPFN = []
+                groups = ["TP", "TN", "FP", "FN"]
+                for group_idx in range(4):
+                    for img in img_name[group_idx]:
+                        img_str = str(img[0]) + "_" + str(img[1]) + "_" + str(img[2]) + "_" + groups[group_idx]
+                        final_TPTNFPFN.append(img_str)
+
+                cls_writer.writerow(final_TPTNFPFN)
+
                 if it == runs-1:
                     avg = mean(test_accs_per_fold[fold])
                     sd = stdev(test_accs_per_fold[fold])
                     test_accs_per_fold[fold].append(avg)
                     test_accs_per_fold[fold].append(sd)
                     test_accs_per_fold[fold].reverse()
-
+    # write test results (mean and sd) of every fold and total to a csv file
     with open(path_test, "w") as test_file:
         test_writer = csv.writer(test_file)
         test_writer.writerow([stdev(all_test_accs), mean(all_test_accs)])
@@ -255,9 +284,7 @@ def test(m, folder, runs, device):
     print("standard deviation:", "\t", stdev(all_test_accs)*100)
 
 
-
-
-def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, fold, augment=False, opt=False, testing=False):
+def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_input_features, hidden, device, lr, step_size, lr_decay, m, folder, fold, augment=False, opt=False, testing=False, it=None):
     """
     the data of the pt1 dataset is split into train val and test in 4 different ways
     this function trains and validates using the train and val split of one of these 4 possible splits
@@ -382,7 +409,7 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
             val_res = np.copy(running_val_acc)
             img_name_res = img_name
             if testing:
-                torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
+                torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + "it"+str(it)+".pt")
         # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
@@ -413,7 +440,7 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
             img_name_res = img_name
             TP_TN_FP_FN_res = np.copy(TP_TN_FP_FN)
             val_res = np.copy(running_val_acc)
-            torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt")
+            torch.save(model, "Parameters/" + folder_short + m + "_fold" + str(fold) + "it"+str(it)+".pt")
 
         val_accs.append(val_acc)
         val_losses.append(val_loss)
