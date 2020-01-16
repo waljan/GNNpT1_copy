@@ -11,7 +11,7 @@
 #SBATCH --gres=gpu:gtx1080ti:1
 #SBATCH --constraint=gtx1080
 #SBATCH --mem=4000M
-#SBATCH --time=04:00:00
+#SBATCH --time=03:00:00
 
 #SBATCH --no-requeue
 
@@ -19,8 +19,8 @@
 source ~/anaconda3/etc/profile.d/conda.sh
 #conda activate GNNpT1Env
 echo "activate env"
-conda activate GNNpT1Env
-#conda activate GNNEnv #contains updated pytorch and torchvision
+#conda activate GNNpT1Env
+conda activate GNNEnv #contains updated pytorch and torchvision
 #module load GCC/7.3.0-2.30
 #module load GCC/8.3.0
 #echo "load modules"
