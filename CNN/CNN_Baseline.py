@@ -251,7 +251,7 @@ def train_and_test_1Fold(fold, device):
                                                                                                           testing=True)
         if bool:
             print("FOLD" + str(fold) + "rerun due to dead neurons")
-    print("val acc:", val_res[1])
+    print("val acc:", val_res[2])
 
     img_size = 128
     train_IDs, val_IDs, test_IDs = train_val_test_split(fold)                           # split data
@@ -521,8 +521,6 @@ def evaluate(model, val_loader, crit, device, testing=False):
                     TP_TN_FP_FN[1] += 1
                     img_name[1].append(name[true_idx][c].tolist())
                 c+=1
-            if testing:
-                print(TP_TN_FP_FN)
 
 
 
