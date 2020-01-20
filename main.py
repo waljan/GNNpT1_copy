@@ -122,7 +122,7 @@ def get_opt_param(m, folder, fold):
 
     for f in os.listdir(path):
         if not f.startswith("."):
-            if os.path.isfile(path + f) and k in f and f.endswith("it100.csv"): # TODO adjust path
+            if os.path.isfile(path + f) and k in f and f.endswith("undirected.csv"):
                 with open(path + f, "r") as file:
                     hp = list(csv.reader(file))
                     hp=hp[1]
