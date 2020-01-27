@@ -11,7 +11,7 @@
 #SBATCH --gres=gpu:gtx1080ti:1
 #SBATCH --constraint=gtx1080
 #SBATCH --mem=4000M
-#SBATCH --time=20:00:00
+#SBATCH --time=70:00:00
 
 #SBATCH --no-requeue
 
@@ -42,7 +42,7 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 
 
 echo "CNN, fold:" $1
-python CNN/CNN_ModelOptimization.py --fold=$1 --device="cuda" --runs=10 --iterations=100
+python CNN/CNN_ModelOptimization.py --fold=$1 --device="cuda" --runs=10 --iterations=100 --model="VGG16_bn"
 
 
 # run using: bash CNN/job_CNN_HyperOpt.sh 0

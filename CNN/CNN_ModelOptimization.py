@@ -9,7 +9,7 @@ from CNN_Baseline import train_and_val_1Fold
 
 
 
-def hyperopt(search_space, num_epochs, f, runs, iterations, device):
+def hyperopt(search_space, m, num_epochs, f, runs, iterations, device):
     """
     :param search_space: dictionary containing all the hyperparameters and the range that should be searched
     :param num_epochs: number of epochs
@@ -36,14 +36,14 @@ def hyperopt(search_space, num_epochs, f, runs, iterations, device):
         for it in range(runs):                                     # train and validate the model 3 times to get an average accuracy
             print("run: "+ str(it) + " -------------------")
 
-            res, _, _, _, _, _ = train_and_val_1Fold(**params, num_epochs=num_epochs, fold=f, testing=False,
+            res, _, _, _, _, _ = train_and_val_1Fold(**params, m=m, num_epochs=num_epochs, fold=f, testing=False,
                                                         device=device)
             print(res)
             val_acc.append(np.mean(res))
 
         score = mean(val_acc)
         # compute the average accuracy from the 10 train and validation runs
-        print("Model: CNN   runs evalutated: " + str(it+1))
+        print("Model: " +m+ " runs evalutated: " + str(it+1))
         print("Parameters: " + str(params))
         print("score: " + str(score))
         print("############################################")
@@ -70,7 +70,7 @@ def hyperopt(search_space, num_epochs, f, runs, iterations, device):
 
 
     print("")
-    print("##### Results CNN  fold: " + str(f))
+    print("##### Results" +m+ " fold: " + str(f))
     print("Score best parameters: ", min(loss) * -1)        # min(loss) * -1 is the accuracy obtained with the best combination of parameter values
     print("Best parameters: ", best_param)                  # best_param is the dictionary containing the parameters as key and the best values as value
     print("Time elapsed: ", time() - start)
@@ -82,13 +82,13 @@ def hyperopt(search_space, num_epochs, f, runs, iterations, device):
     # write final result to a file
     direc="CNN/"
     # path = "./out/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-" + strftime("%Y%m%d-%H%M%S") + ".csv"
-    path = "./Hyperparameters/" + direc + "CNN-fold" + str(f) + "-r10-it100.csv"
+    path = "./Hyperparameters/" + direc + m +"-fold" + str(f) + "-r10-it100.csv"
     with open(path, "w") as file:
         fieldnames = ["model","fold", "num_evals", "num_runs_per_eval", "lr", "lr_decay",
                       "num_epochs", "step_size", "weight_decay", "val_acc"] # TODO: add val_acc to the function that reads this file
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerow({"model": "CNN", "fold": f, "num_evals": iterations, "num_runs_per_eval": runs,
+        writer.writerow({"model": m, "fold": f, "num_evals": iterations, "num_runs_per_eval": runs,
                          "lr": best_param["lr"], "lr_decay": best_param["lr_decay"], "num_epochs": num_epochs,
                          "step_size": best_param["step_size"], "weight_decay": best_param["weight_decay"],
                          "val_acc": min(loss)* -1
@@ -101,6 +101,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--fold", type=int, required=True)
+    parser.add_argument("--model", "-m", type=str, default="CNN")
     parser.add_argument("--max_epochs", type=int, default=40)
     parser.add_argument("--runs", type=int, default=10)
     parser.add_argument("--iterations", type=int, default=100)
@@ -119,5 +120,5 @@ if __name__ == "__main__":
     # hp.choice(label, options) options is a list from which one element will be chosen
 
     # hyperopt(search_space, f=args.fold, m=args.model, folder=args.folder, augment=args.augment, in_features = in_features, device=args.device, runs=args.runs, iterations=args.iterations)
-    hyperopt(search_space,  num_epochs=args.max_epochs, f=args.fold, device=args.device, runs=args.runs,
+    hyperopt(search_space, m=args.model, num_epochs=args.max_epochs, f=args.fold, device=args.device, runs=args.runs,
              iterations=args.iterations)
