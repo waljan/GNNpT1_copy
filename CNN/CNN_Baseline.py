@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import torch
 import torch.nn as nn
 from torchvision import transforms
+from torchvision.models import vgg16_bn
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
 import numpy as np
@@ -235,13 +236,14 @@ class CNN(nn.Module):
 
 
 
-def train_and_test_1Fold(fold, device):
+
+def train_and_test_1Fold(fold, m, device):
     # get the hyperparameters
     _, _, lr, lr_decay, num_epochs, step_size, weight_decay = get_opt_param(fold)
     bool=True
     while bool:
         # train and validate the CNN, save the model weights that have highest accuracy on validation set
-        val_res, bool, train_accs, val_accs, train_losses, val_losses = train_and_val_1Fold(fold=fold,
+        val_res, bool, train_accs, val_accs, train_losses, val_losses = train_and_val_1Fold(fold=fold, m=m,
                                                                                                           num_epochs=num_epochs,
                                                                                                           lr=lr,
                                                                                                           lr_decay=lr_decay,
@@ -265,21 +267,21 @@ def train_and_test_1Fold(fold, device):
 
 
 
-    model = torch.load("Parameters/CNN/CNN_fold"+str(fold) + ".pt")                     # load model
+    model = torch.load("Parameters/CNN/" + m + "_fold"+str(fold) + ".pt")                     # load model
     crit = torch.nn.CrossEntropyLoss(reduction="sum")                                   # define loss function
     test_acc, test_loss, img_name, TP_TN_FP_FN = evaluate(model, test_loader, crit, device, testing=True)     # evaluation on test_set
     print("test_acc:", test_acc)
     # print(TP_TN_FP_FN)
     return test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN
 
-def test(runs, device):
+def test(runs, m,  device):
     """
     write train accs and val accs of all runs to one csv file per fold
     :param runs: number of times train, val and test is repeated
     :param device: "cuda" or "cpu"
     :return:
     """
-    m = "CNN"
+    # m = "CNN"
     folder_short="CNN/"
     all_test_accs = []
     test_accs_per_fold = [[],[],[],[]]
@@ -314,7 +316,7 @@ def test(runs, device):
             cls_writer = csv.writer(cls_file)
 
             for it in range(runs):
-                test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN = train_and_test_1Fold(fold=fold, device=device)
+                test_acc, train_accs, val_accs, train_losses, val_losses, img_name, TP_TN_FP_FN = train_and_test_1Fold(fold=fold, m=m, device=device)
 
                 all_test_accs.append(test_acc)
                 test_accs_per_fold[fold].append(test_acc)
@@ -356,8 +358,9 @@ def test(runs, device):
 ############################################################################################
 
 
-def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay, device, plotting=False, testing=False):
+def train_and_val_1Fold(fold, m, num_epochs, lr, lr_decay, step_size, weight_decay, device, plotting=False, testing=False):
     img_size = 128
+    # img_size = 256
     train_IDs, val_IDs, test_IDs = train_val_test_split(fold)
     train_transform = transforms.Compose([transforms.Resize((img_size,img_size)),
                                     # transforms.RandomHorizontalFlip(),
@@ -372,6 +375,7 @@ def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay,
     # print("train size: " + str(len(train_data)) + "   val size: " + str(len(val_data)))
     # data loaders
     batchsize = 64
+    # batchsize = 16
     train_loader = DataLoader(train_data, batchsize, shuffle=True, drop_last=True)
     val_loader = DataLoader(val_data, batchsize, shuffle=True)
     test_loader = DataLoader(test_data, batchsize, shuffle=True)
@@ -383,9 +387,11 @@ def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay,
     val_losses = []  # will contain the validation loss of every epoch
 
     # initialize model
-    print("initialize CNN")
-    model = CNN(img_size).to(device)
-
+    print("initialize", m)
+    if m == "CNN":
+        model = CNN(img_size).to(device)
+    elif m == "VGG16_bn":
+        model = vgg16_bn().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)  # define the optimizer, weight_decay corresponds to L2 regularization
     # optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=lr_decay)  # learning rate decay
@@ -404,7 +410,7 @@ def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay,
             val_res = np.copy(running_val_acc)
 
             if testing:
-                torch.save(model, "Parameters/CNN/CNN_fold"+str(fold) + ".pt")
+                torch.save(model, "Parameters/CNN/" + m + "_fold"+str(fold) + ".pt")
         # train the model
         train(model, train_loader, optimizer, crit, device)
         scheduler.step()
@@ -424,7 +430,7 @@ def train_and_val_1Fold(fold, num_epochs, lr, lr_decay, step_size, weight_decay,
             val_res = np.copy(running_val_acc)
         if running_val_acc[2] > val_res[2] and testing:
             val_res = np.copy(running_val_acc)
-            torch.save(model,"Parameters/CNN/CNN_fold"+str(fold) + ".pt")
+            torch.save(model,"Parameters/CNN/" + m + "_fold"+str(fold) + ".pt")
         if plotting:
             for param_group in optimizer.param_groups:
                 print("Epoch: {:03d}, lr: {:.5f}, train_loss: {:.5f}, val_loss: {:.5f}, train_acc: {:.5f}, val_acc: {:.5f}".format(epoch, param_group["lr"], train_loss, val_loss, train_acc, val_acc))
@@ -563,7 +569,7 @@ if __name__ == "__main__":
 
 
     # plot_all_images()
-    # train_and_val_1Fold(fold=0, num_epochs=30, lr=0.001, lr_decay=0.8, step_size=3, weight_decay=0.01, device="cuda", plotting=True)
+    # train_and_val_1Fold(fold=0, m="VGG16_bn", num_epochs=30, lr=0.01, lr_decay=0.8, step_size=3, weight_decay=0.01, device="cuda", plotting=True)
 
 
-    test(runs=100,device="cuda")
+    test(runs=100,device="cuda", m="VGG16_bn")
