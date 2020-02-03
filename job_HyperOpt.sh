@@ -45,15 +45,15 @@ then
   for FOLD in 0 1 2 3
   do
     echo $1 "base, fold:" $FOLD
-    python ModelOptimization.py --fold=$FOLD --model=$1 --folder="pT1_dataset/graphs/base-dataset/" --device="cuda" --runs=10 --iterations=100 # --augment
+    python ModelOptimization.py --fold=$FOLD --model=$1 --folder="pT1_dataset/graphs/base-dataset/" --device="cuda" --runs=2 --iterations=1 --opt_run=$3
   done
 else
   for FOLD in 0 1 2 3
   do
     echo $1 "paper, fold:" $FOLD
-    python ModelOptimization.py --fold=$FOLD --model=$1 --folder="pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/" --device="cuda" --runs=10 --iterations=100 #--augment
+    python ModelOptimization.py --fold=$FOLD --model=$1 --folder="pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/" --device="cuda" --runs=2 --iterations=1  --opt_run=$3
   done
 fi
 
-# run using: bash job_HyperOpt.sh "GraphSAGE" "base"
-# or on UBELIX: sbatch job_HyperOpt.sh "GraphSAGE" "base"
+# run using: bash job_HyperOpt.sh "GraphSAGE" "base" 1
+# or on UBELIX: sbatch job_HyperOpt.sh "GraphSAGE" "base" 1
