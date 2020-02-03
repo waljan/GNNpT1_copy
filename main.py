@@ -2,7 +2,6 @@
 
 import torch
 from torch_geometric.data import DataLoader
-from torch_geometric.utils import to_undirected
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import StepLR
@@ -10,12 +9,11 @@ from statistics import mean, stdev
 import random
 import os
 import csv
-import argparse
 
 
 
 #own modules
-from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , OwnGraphNN, OwnGraphNN2, GATNet, GraphNN, NMP
+from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , GIN, GATNet, GraphNN, NMP
 from Dataset_construction import DataConstructor
 from MLP import MLP
 from Save_Data_Objects import load_obj
@@ -162,7 +160,7 @@ def train_and_test_1Fold(m, folder, fold, it, device):
     elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         num_input_features = 4
         folder_short = "paper/"
-    batch_size = 32
+    batch_size = 64
     # if not os.path.exists("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt"):
     #     print("get hyperparams and train model")
     _, _, _, hidden , lr, lr_decay, num_epochs, num_layers, step_size, weight_decay = get_opt_param(m, folder, fold)
@@ -194,7 +192,8 @@ def train_and_test_1Fold(m, folder, fold, it, device):
     test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=True)
 
     model = torch.load("Parameters/" + folder_short + m + "_fold" + str(fold) + "it"+str(it)+".pt")
-    crit = torch.nn.CrossEntropyLoss(reduction="sum")
+    # crit = torch.nn.CrossEntropyLoss(reduction="sum")
+    crit = torch.nn.NLLLoss()
     test_acc, test_loss, img_name, TP_TN_FP_FN = evaluate(model, test_loader, crit, device)
     print("test_acc:", test_acc)
     print(TP_TN_FP_FN)
@@ -374,10 +373,8 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
         model = GraphSAGE(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
     elif m == "GraphSAGEWithJK":
         model = GraphSAGEWithJK(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
-    elif m == "OwnGraphNN":
-        model = OwnGraphNN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden, mode="cat").to(device)
-    elif m == "OwnGraphNN2":
-        model = OwnGraphNN2(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
+    elif m == "GIN":
+        model = GIN(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
     elif m == "GATNet":
         model = GATNet(num_layers=num_layers, num_input_features=num_input_features, hidden=hidden).to(device)
     elif m == "GraphNN":
@@ -388,8 +385,8 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)  # define the optimizer, weight_decay corresponds to L2 regularization
     scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay) # learning rate decay
 
-    crit = torch.nn.CrossEntropyLoss(reduction="sum")
-
+    # crit = torch.nn.CrossEntropyLoss(reduction="sum")
+    crit = torch.nn.NLLLoss()
     bad_epoch = 0
     # compute training and validation accuracy for every epoch
     for epoch in range(num_epochs):
