@@ -9,7 +9,7 @@ from main import train_and_val_1Fold
 
 
 
-def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_features, runs, iterations, device):
+def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_features, runs, iterations, device, opt_run):
     """
     :param search_space: dictionary containing all the hyperparameters and the range that should be searched
     :param hidden: number of hidden features (graph convolution)
@@ -43,7 +43,7 @@ def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_feat
 
             res, _, _, _, _, _, _ = train_and_val_1Fold(**params, hidden=hidden, num_layers=num_layers,
                                                            num_epochs=num_epochs, fold=f, m=m, opt=True,
-                                                           folder=folder, augment=False, batch_size=32,
+                                                           folder=folder, augment=False, batch_size=64,
                                                            num_input_features=in_features, device=device)
 
             val_acc.append(np.mean(res))
@@ -91,7 +91,7 @@ def hyperopt(search_space, hidden, num_layers, num_epochs, f, m, folder, in_feat
     elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         direc = "paper/"
     # path = "./out/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-" + strftime("%Y%m%d-%H%M%S") + ".csv"
-    path = "./Hyperparameters/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-undirected.csv"
+    path = "./Hyperparameters/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it50-undirected"+str(opt_run)+".csv"
     with open(path, "w") as file:
         fieldnames = ["dataset", "model","fold", "num_evals", "num_runs_per_eval", "hidden", "lr", "lr_decay",
                       "num_epochs", "num_layers", "step_size", "weight_decay", "val_acc"] # TODO: add val_acc to the function that reads this file
@@ -112,28 +112,29 @@ if __name__ == "__main__":
     parser.add_argument("--fold", type=int, required=True)
     parser.add_argument("--model", "-m", type=str, required=True)
     parser.add_argument("--folder", type=str, required=True)
-    parser.add_argument("--max_epochs", type=int, default=40)
+    parser.add_argument("--max_epochs", type=int, default=80)
     parser.add_argument("--runs", type=int, default=10)
-    parser.add_argument("--iterations", type=int, default=100)
+    parser.add_argument("--iterations", type=int, default=50)
     parser.add_argument("--device",  type=str, default="cuda")
+    parser.add_argument("--opt_run", type=int, required=True)
     args = parser.parse_args()
 
     if args.folder == "pT1_dataset/graphs/base-dataset/":
         in_features = 33
-        hidden = 66
+        hidden = 64
         num_layers = 3
 
     elif args.folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         in_features = 4
-        hidden = 32
+        hidden = 64
         num_layers = 3
 
 
     # search space
     search_space = {
         "weight_decay": hp.loguniform("weight_decay", np.log(0.0001), np.log(0.01)),
-        "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.1)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
-        "step_size": pyll.scope.int(hp.quniform("step_size", 3, 7, 3)),             # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q
+        "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.01)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
+        "step_size": pyll.scope.int(hp.quniform("step_size", 10, 31, 10)),             # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q
         "lr_decay": hp.uniform("lr_decay", 0.5, 1),                                 # hp.uniform(label, low, high) return a value uniformly between low and high
                                                                                     # pyll.scope.int() converts the float output of hp.quiniform into an integer
     }
@@ -141,7 +142,7 @@ if __name__ == "__main__":
 
     # hyperopt(search_space, f=args.fold, m=args.model, folder=args.folder, augment=args.augment, in_features = in_features, device=args.device, runs=args.runs, iterations=args.iterations)
     hyperopt(search_space, hidden=hidden, num_layers=num_layers, num_epochs=args.max_epochs, f=args.fold, m=args.model,
-             folder=args.folder, in_features=in_features, device=args.device, runs=args.runs, iterations=args.iterations)
+             folder=args.folder, in_features=in_features, device=args.device, runs=args.runs, iterations=args.iterations, opt_run=args.opt_run)
 
 
 
