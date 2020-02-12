@@ -261,87 +261,98 @@ if __name__ == "__main__":
 
     # make csv files containing the mean and sd of all attributes
     ##################################
-    raw_data.compute_mean_sd_per_split()
+    # raw_data.compute_mean_sd_per_split()
 
-
-
-    train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, raw=False, k=0) # get data lists for train, val and test
-    print("number of graphs",len(train_data_list))         # how many graphs are inside the train_data_list
-    print("first graph:",train_data_list[0])           # data object for first graph
-    print("graph from:", train_data_list[0].name)
-    print("feature vec:",train_data_list[0].x[0])   # feature vec of first node
-    print("data object for graph of img_0_0_normal:", raw_data.get_graph(folder, filename, raw=False, k=0))
-
-
-    # Dataloader
-    train_data = DataLoader(train_data_list, batch_size=32)
-    for batch in train_data:
-        print("num of graphs in batch:", batch.num_graphs)
-        print("batch:", batch)
-        break
-
-    print("dimension of edge_attr:", train_data_list[0].edge_attr.dim())
-    # print("edge_attr of first graph", train_data_list[0].edge_attr)
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from statistics import stdev, mean
-
-    # train_data_list = test_data_list
-    # train_data_list = val_data_list
-
-    # plot feature distributions (normal and abnormal glands together)
-    plt.rc("font", size=5)  # change font size
-
-    for f_idx in range(train_data_list[0].num_node_features):   # get indices of every feature
-        f_vec = []                                              # f_vec will contain the values of a particular feature of every node and graph
-
-        for graph in train_data_list:                           # iterate over every graph in train_data_list
-            for nd_idx in range(graph.num_nodes):               # get indices of every node
-                f_vec.append(graph.x[nd_idx][f_idx].item())
-
-        plt.subplot(4, len(train_data_list[0].x[0])//4+1, f_idx+1)
-        plt.hist(f_vec, density=True)
-        plt.title("f"+ str(f_idx+4) + "  std: " + str(torch.std(torch.tensor(f_vec)).item())[:5] + "  mean: " + str(torch.mean(torch.tensor(f_vec)).item())[:5])
-
-    # plt.tight_layout()
-    plt.show()
-
-    # plot feature distributions (normal vs abnormal glands)
-    for f_idx in range(train_data_list[0].num_node_features):
-        f_vec_normal = []
-        f_vec_abnormal = []
-
-        for graph in train_data_list:
-
-            if graph.y[0][0].item() == 1:  # abnormal
-                for nd_idx in range(graph.num_nodes):
-                    f_vec_abnormal.append(graph.x[nd_idx][f_idx])
-
-            elif graph.y[0][0].item() == 0: #normal
-                for nd_idx in range(graph.num_nodes):
-                    f_vec_normal.append(graph.x[nd_idx][f_idx])
-
-        plt.subplot(4, train_data_list[0].num_node_features//4+1, f_idx+1)
-        plt.hist(f_vec_normal, alpha=0.5, label="n", density=True)
-        plt.hist(f_vec_abnormal, alpha=0.5, label="a", density=True)
-        plt.legend()
-        plt.title("f"+ str(f_idx+4))
-    plt.tight_layout()
-    plt.show()
-
-    # plot number of nodes (normal vs abnormal glands)
     num_nd_ab = []
     num_nd_n = []
-    for graph in train_data_list:
-        if graph.y[0][0].item() == 1:
-            num_nd_ab.append(graph.num_nodes)
-        if graph.y[0][0].item() == 0:
-            num_nd_n.append(graph.num_nodes)
-    bins = np.linspace(0,600, 20)
-    plt.hist(num_nd_n, bins, alpha=0.5, label="normal")
-    plt.hist(num_nd_ab, bins, alpha=0.5, label="abnormal")
-    plt.title("number of nodes per class")
-    plt.ylabel("freq")
-    plt.legend()
-    plt.show()
+    for k in range(1):
+        train_data_list, val_data_list, test_data_list = raw_data.get_data_list(folder, raw=False, k=k) # get data lists for train, val and test
+        print("number of graphs",len(train_data_list))         # how many graphs are inside the train_data_list
+        print("first graph:",train_data_list[0])           # data object for first graph
+        print("graph from:", train_data_list[0].name)
+        print("feature vec:",train_data_list[0].x[0])   # feature vec of first node
+        print("data object for graph of img_0_0_normal:", raw_data.get_graph(folder, filename, raw=False, k=k))
+
+        # Dataloader
+        # train_data = DataLoader(train_data_list, batch_size=32)
+        # for batch in train_data:
+        #     print("num of graphs in batch:", batch.num_graphs)
+        #     print("batch:", batch)
+        #     break
+
+        print("dimension of edge_attr:", train_data_list[0].edge_attr.dim())
+        # print("edge_attr of first graph", train_data_list[0].edge_attr)
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        from statistics import stdev, mean
+
+        # train_data_list = test_data_list
+        # train_data_list = val_data_list
+
+        # plot feature distributions (normal and abnormal glands together)
+        # plt.rc("font", size=5)  # change font size
+        #
+        # for f_idx in range(train_data_list[0].num_node_features):   # get indices of every feature
+        #     f_vec = []                                              # f_vec will contain the values of a particular feature of every node and graph
+        #
+        #     for graph in train_data_list:                           # iterate over every graph in train_data_list
+        #         for nd_idx in range(graph.num_nodes):               # get indices of every node
+        #             f_vec.append(graph.x[nd_idx][f_idx].item())
+        #
+        #     plt.subplot(4, len(train_data_list[0].x[0])//4+1, f_idx+1)
+        #     plt.hist(f_vec, density=True)
+        #     plt.title("f"+ str(f_idx+4) + "  std: " + str(torch.std(torch.tensor(f_vec)).item())[:5] + "  mean: " + str(torch.mean(torch.tensor(f_vec)).item())[:5])
+
+        # plt.tight_layout()
+        # plt.show()
+
+        # plot feature distributions (normal vs abnormal glands)
+        # for f_idx in range(train_data_list[0].num_node_features):
+        #     f_vec_normal = []
+        #     f_vec_abnormal = []
+        #
+        #     for graph in train_data_list:
+        #
+        #         if graph.y[0][0].item() == 1:  # abnormal
+        #             for nd_idx in range(graph.num_nodes):
+        #                 f_vec_abnormal.append(graph.x[nd_idx][f_idx])
+        #
+        #         elif graph.y[0][0].item() == 0: #normal
+        #             for nd_idx in range(graph.num_nodes):
+        #                 f_vec_normal.append(graph.x[nd_idx][f_idx])
+        #
+        #     plt.subplot(4, train_data_list[0].num_node_features//4+1, f_idx+1)
+        #     plt.hist(f_vec_normal, alpha=0.5, label="n", density=True)
+        #     plt.hist(f_vec_abnormal, alpha=0.5, label="a", density=True)
+        #     plt.legend()
+        #     plt.title("f"+ str(f_idx+4))
+        # plt.tight_layout()
+        # plt.show()
+
+        # plot number of nodes (normal vs abnormal glands)
+
+        for data_list in [train_data_list, val_data_list, test_data_list]:
+            for graph in data_list:
+                if graph.y[0][0].item() == 1:
+                    num_nd_ab.append(graph.num_nodes)
+                if graph.y[0][0].item() == 0:
+                    num_nd_n.append(graph.num_nodes)
+
+    print("max abnormal:", np.max(np.asarray(num_nd_ab)))
+    print("min abnormal:", np.min(np.asarray(num_nd_ab)))
+    print("max_normal:", np.max(np.asarray(num_nd_n)))
+    print("min_normal:", np.min(np.asarray(num_nd_n)))
+    print("median _abnormal:", np.median(np.asarray(num_nd_ab)))
+    print("median_normal:", np.median(np.asarray(num_nd_n)))
+    for i in num_nd_ab:
+        num_nd_n.append(i)
+    print("median total:", np.median(np.asarray(num_nd_n)))
+        # bins = np.linspace(0,600, 20)
+
+        # plt.hist(num_nd_n, bins, alpha=0.5, label="normal")
+        # plt.hist(num_nd_ab, bins, alpha=0.5, label="abnormal")
+        # plt.title("number of nodes per class")
+        # plt.ylabel("freq")
+        # plt.legend()
+        # plt.show()
