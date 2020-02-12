@@ -11,7 +11,7 @@
 #SBATCH --gres=gpu:gtx1080ti:1
 #SBATCH --constraint=gtx1080
 #SBATCH --mem=4000M
-#SBATCH --time=20:00:00
+#SBATCH --time=24:00:00
 
 #SBATCH --no-requeue
 
@@ -47,5 +47,5 @@ echo "CNN"
 
 python CNN/CNN_Baseline.py
 
-# run using: bash CNN/job_CNN_Test.sh "GraphSAGE"
-# or on UBELIX: sbatch CNN/job_CNN_Test.sh "GraphSAGE"
+# run using: bash CNN/job_CNN_Test.sh
+# or on UBELIX: sbatch CNN/job_CNN_Test.sh
