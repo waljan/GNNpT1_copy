@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Linear, init
 from torch_geometric.nn import GCNConv, SAGEConv, GraphConv, NNConv, GATConv, GINConv, JumpingKnowledge
-from torch_geometric.nn import global_mean_pool, TopKPooling, global_max_pool, GlobalAttention, global_add_pool, Set2Set
+from torch_geometric.nn import global_mean_pool, global_max_pool, global_add_pool
 
 # own modules
 from GraphConvolutions import OwnGConv, OwnGConv2
@@ -56,11 +56,10 @@ class GCN(torch.nn.Module):
         x = F.relu(self.conv1(x, edge_index))
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
-        # x = F.dropout(x, p=0.5, training=self.training)  ##################
+
 
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            # x = F.dropout(x, p=0.5, training=self.training)  ##################
 
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
@@ -72,7 +71,7 @@ class GCN(torch.nn.Module):
         # x.shape:  torch.Size([num_graphs_in_batch, 3*hidden)
         # example:  x.shape = torch.Size([32, 3*66])
 
-        # linear layers, activation function, dropout and softmax
+        # linear layers, activation function, dropout
         x = F.relu(self.lin1(x))
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
@@ -140,19 +139,17 @@ class GCNWithJK(torch.nn.Module):
         x = F.relu(self.conv1(x, edge_index))
         # x.shape: torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = troch.Size([2490,66])
-        # x = F.dropout(x, p=0.5, training=self.training)  ##################
         xs = [x]
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            # x = F.dropout(x, p=0.5, training=self.training)  ##################
             xs += [x]  # xs: list containing layer-wise representations
         x = self.jump(xs) # aggregate information across different layers (concatenation)
         # x.shape: torch.Size([num_nodes_in_batch, num_layers * hidden])
-        # example: x.shape = torch.Size([2490, 2*66])
+        # example: x.shape = torch.Size([2490, 3*66])
 
         x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
-        # x.shape: torch.Size([num_graphs_in_batch, 2*hidden])
-        # example: x.shape = torch.Size([32, 2*66])
+        # x.shape: torch.Size([num_graphs_in_batch, 3*num_layers * hidden])
+        # example: x.shape = torch.Size([32, 3*3*66])
 
         x = F.relu(self.lin1(x))
         # x.shape: torch.Size([num_graphs_in_batch, hidden])
@@ -162,7 +159,6 @@ class GCNWithJK(torch.nn.Module):
         # x.shape: torch.Size([num_graphs_in_batch, num_classes])
         # example: x.shape = torch.Size([32, 2])
         return F.log_softmax(x, dim=-1)
-        # return F.softmax(x, dim=-1)
 
     def __repr__(self):
         return self.__class__.__name__
@@ -210,14 +206,12 @@ class GraphSAGE(torch.nn.Module):
         x = F.relu(self.conv1(x, edge_index))
         # x.shape: torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = troch.Size([2490,66])
-        # x = F.dropout(x, p=0.2, training=self.training) ##################
 
 
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
             # x.shape: torch.Size([num_nodes_in_batch, hidden])
             # example:  x.shape = troch.Size([2490,66])
-            # x = F.dropout(x, p=0.2, training=self.training)  ##################
 
         
         x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch),global_max_pool(x, batch)], dim=1)
@@ -267,11 +261,10 @@ class GraphSAGEWithJK(torch.nn.Module):
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
         x = F.relu(self.conv1(x, edge_index))
-        # x = F.dropout(x, p=0.5, training=self.training)  ##################
+
         xs = [x]
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            # x = F.dropout(x, p=0.5, training=self.training)  ##################
             xs += [x]
         x = self.jump(xs)
 
@@ -328,23 +321,17 @@ class GATNet(torch.nn.Module):
         x = F.relu(self.conv1(x, edge_index))
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
-        # x = F.dropout(x, p=0.5, training=self.training)  ##################
 
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            # x = F.dropout(x, p=0.5, training=self.training)  ##################
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
 
-        # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
-        # if there are 30 graphs in the batch and the feature vector has length hidden, the resulting x has shape [30, hidden]
-        # x = global_mean_pool(x, batch)
-        # x = global_add_pool(x, batch)
         x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
 
-        # linear layers, activation function, dropout and softmax
+        # linear layers, activation function, dropout
         x = F.relu(self.lin1(x))
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
@@ -381,14 +368,13 @@ class NMP(torch.nn.Module):
         self.lin1 = Linear(3*hidden, hidden)  # linear layer
         self.lin2 = Linear(hidden, 2)       # linear layer, output layer, 2 classes
 
-    def reset_parameters(self):     # reset all conv and linear layers except the first GCNConv layer
+    def reset_parameters(self):
         self.conv1.reset_parameters()
         for conv in self.convs:
-            conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GCNConv class
+            conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.NNConv class
         self.lin1.reset_parameters()    # .reset_parameters() is method of the torch.nn.Linear class
         self.lin2.reset_parameters()
         self.att.reset_parameters()
-        # self.set2set.reset_parameters()
 
     def forward(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
@@ -398,17 +384,14 @@ class NMP(torch.nn.Module):
         for conv in self.convs:
             x = F.relu(conv(x, edge_index, edge_attr))
 
-        # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
-        # if there are 30 graphs in the batch and the feature vector has length 6, the resulting x has shape [30, 6]
-
         x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
 
-        #linear layers, activation function, dropout and softmax
+        #linear layers, activation function, dropout
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
 
-        output = F.log_softmax(x, dim=-1) #get output between 0 and 1
+        output = F.log_softmax(x, dim=-1)
 
         return output
 
@@ -429,7 +412,7 @@ class GIN(torch.nn.Module):
                              num_input_features, hidden)
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
-            self.convs.append(GINConv(torch.nn.Sequential(Linear(hidden, hidden), torch.nn.ReLU(), Linear(hidden, hidden), torch.nn.ReLU()),hidden, hidden))  # remaining GCNconv layers
+            self.convs.append(GINConv(torch.nn.Sequential(Linear(hidden, hidden), torch.nn.ReLU(), Linear(hidden, hidden), torch.nn.ReLU()),hidden, hidden))
 
         self.lin1 = torch.nn.Linear(3*hidden, hidden)
         self.lin2 = torch.nn.Linear(hidden, 2)
@@ -437,7 +420,7 @@ class GIN(torch.nn.Module):
     def reset_parameters(self):     # reset all conv and linear layers
         self.conv1.reset_parameters()
         for conv in self.convs:
-            conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GCNConv class
+            conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GINConv class
         self.lin1.reset_parameters()    # .reset_parameters() is method of the torch.nn.Linear class
         self.lin2.reset_parameters()
 
@@ -462,23 +445,18 @@ class GIN(torch.nn.Module):
         x = F.relu(self.conv1(x, edge_index))
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
-        # x = F.dropout(x, p=0.5, training=self.training)  ##################
 
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            # x = F.dropout(x, p=0.5, training=self.training)  ##################
 
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
-
-        # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
-        # if there are 30 graphs in the batch and the feature vector has length hidden, the resulting x has shape [30, hidden]
 
         x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch),global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, 3*hidden)
         # example:  x.shape = torch.Size([32, 3*66])
 
-        # linear layers, activation function, dropout and softmax
+        # linear layers, activation function, dropout
         x = F.relu(self.lin1(x))
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])
@@ -514,7 +492,7 @@ class GraphNN(torch.nn.Module):
     def reset_parameters(self):  # reset all conv and linear layers
         self.conv1.reset_parameters()
         for conv in self.convs:
-            conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GCNConv class
+            conv.reset_parameters()  # .reset_parameters() is method of the torch_geometric.nn.GraphConv class
         self.lin1.reset_parameters()  # .reset_parameters() is method of the torch.nn.Linear class
         self.lin2.reset_parameters()
 
@@ -539,23 +517,18 @@ class GraphNN(torch.nn.Module):
         x = F.relu(self.conv1(x, edge_index))
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
-        # x = F.dropout(x, p=0.5, training=self.training)  ##################
 
         for conv in self.convs:
             x = F.relu(conv(x, edge_index))
-            # x = F.dropout(x, p=0.5, training=self.training)  ##################
 
         # x.shape:  torch.Size([num_nodes_in_batch, hidden])
         # example:  x.shape = torch.Size([2490, 66])
-
-        # global mean pooling: the feature vector of every node of one graph are summed and the mean is taken
-        # if there are 30 graphs in the batch and the feature vector has length hidden, the resulting x has shape [30, hidden]
 
         x = torch.cat([global_add_pool(x, batch), global_mean_pool(x, batch), global_max_pool(x, batch)], dim=1)
         # x.shape:  torch.Size([num_graphs_in_batch, 3*hidden)
         # example:  x.shape = torch.Size([32, 3*66])
 
-        # linear layers, activation function, dropout and softmax
+        # linear layers, activation function, dropout
         x = F.relu(self.lin1(x))
         # x.shape:  torch.Size([num_graphs_in_batch, hidden)
         # example:  x.shape = torch.Size([32, 66])

@@ -14,7 +14,6 @@ import csv
 
 #own modules
 from model import GCN, GCNWithJK, GraphSAGE, GraphSAGEWithJK , GIN, GATNet, GraphNN, NMP
-from Dataset_construction import DataConstructor
 from MLP import MLP
 from Save_Data_Objects import load_obj
 
@@ -22,13 +21,11 @@ from Save_Data_Objects import load_obj
 
 def train(model, train_loader, optimizer, crit, device):
     """
-
-    :param model: (str) which model is trained
-    :param train_loader:
+    :param model: model that is beeing trained
+    :param train_loader: data loader
     :param optimizer: which optimizer is used (Adam)
     :param crit: which loss function is used
     :param device: (str) either "cpu" or "cuda"
-    :return:
     """
     model.train()
     # iterate over all batches in the training data
@@ -41,37 +38,44 @@ def train(model, train_loader, optimizer, crit, device):
         label = data.y.to(device) # transfer the labels to the device
 
         loss = crit(output, torch.max(label,1)[1].long()) # compute the loss between output and label
-        # loss = crit(output, label)
+
         loss.backward() # compute the gradient
 
         optimizer.step() # adjust the parameters according to the gradient
 
 
 def evaluate(model, val_loader, crit, device):
+    """
+    :param model: model that is beeing trained
+    :param val_loader: data loader
+    :param crit: loss function
+    :param device: (str) either "cpu" or "cuda"
+    :return: validation accuracy;
+            validation loss;
+            list that contains inforamtion about every image and how it was classified;
+            number of True Pos/Neg and False Pos/neg
+    """
     model.eval()
-    predictions = []
-    labels = []
+
     loss_all =0
     graph_count=0
     batch_count =0
     correct_pred = 0
     img_name = [[],[], [], []]
     TP_TN_FP_FN = np.zeros((4))
+
     with torch.no_grad(): # gradients don't need to be calculated in evaluation
 
         # pass data through the model and get label and prediction
-        for data in val_loader: # iterate over every batch in validation training set
-            data = data.to(device) # trainsfer data to device
-            predT = model(data)#.detach().cpu().numpy()   # pass the data through the model and store the predictions in a numpy array
-                                                        # for a batch of 30 graphs, the array has shape [30,2]
-            pred = predT.detach().cpu().numpy()
+        for data in val_loader:     # iterate over every batch in validation set
+            data = data.to(device)  # transfer data to device
+            predT = model(data)     # pass the data through the model
+            pred = predT.detach().cpu().numpy()     # store the predictions in a numpy array. For a batch of 30 graphs, the array has shape [30,2]
             labelT = data.y
             label = labelT.detach().cpu().numpy()   # store the labels of the data in a numpy array, for a batch of 30 graphs, the array has shaüe [30, 2]
             predicted_classes = (pred == pred.max(axis=1)[:,None]).astype(int)
-            # predictions.append(predicted_classes) # append the prediction to the list of all predictions
-            # labels.append(label)    # append the label to the list of all labels
 
-            correct_pred += np.sum(predicted_classes[:, 0] == label[:, 0])
+            correct_pred += np.sum(predicted_classes[:, 0] == label[:, 0])  # count correct predictions
             # count the false negatives and false positives
             false_idx = np.argwhere(predicted_classes[:,0]!=label[:,0]).reshape(-1)
             truth = label[false_idx,:]
@@ -84,7 +88,7 @@ def evaluate(model, val_loader, crit, device):
                     TP_TN_FP_FN[2] +=1
                     img_name[2].append(data.name[false_idx][c].tolist())
                 c+=1
-
+            # count the true positives and true negatives
             true_idx = np.argwhere(predicted_classes[:,0]==label[:,0]).reshape(-1)
             truth = label[true_idx,:]
             c=0
@@ -97,20 +101,24 @@ def evaluate(model, val_loader, crit, device):
                     img_name[1].append(data.name[true_idx][c].tolist())
                 c+=1
             loss = crit(predT, torch.max(labelT, 1)[1].long()) # compute the loss between output and label
-            # loss = crit(predT, labelT)
-            # loss_all += data.num_graphs * loss.item()
             loss_all += loss.item()
 
             graph_count += data.num_graphs
             batch_count +=1
 
-    acc = correct_pred / graph_count
+    acc = correct_pred / graph_count    # validation accuracy
     avg_loss = loss_all/graph_count
     return acc, avg_loss, img_name, TP_TN_FP_FN
 
 def get_opt_param(m, folder, fold):
     """
     reads a csv file to  return the optimal parameters for a given model, dataset and data-split
+    :param m: (str) indicates the model (e.g "GraphSAGE")
+    :param folder: (str) indicates wheter to use 33 or 4 node features
+                    4 features: "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/"
+                    33 features: "pT1_dataset/graphs/base-dataset/"
+    :param fold: (int) which fold of the 4-fold CV
+    :return: folder, model, fold and hyperparameters
     """
     if folder == "pT1_dataset/graphs/base-dataset/":
         path = "Hyperparameters/base/" + m + "/"
@@ -120,7 +128,7 @@ def get_opt_param(m, folder, fold):
 
     for f in os.listdir(path):
         if not f.startswith("."):
-            if os.path.isfile(path + f) and k in f and f.endswith("undirected.csv"):
+            if os.path.isfile(path + f) and k in f and f.endswith("undirected1.csv"): # TODO select the parameters that got the best val acc
                 with open(path + f, "r") as file:
                     hp = list(csv.reader(file))
                     hp=hp[1]
@@ -154,6 +162,15 @@ def plot_train_test(train_accs, test_accs):
 
 
 def train_and_test_1Fold(m, folder, fold, it, device):
+    """
+    train the model on the training set, select the best model weights using the validation set and test on the testset.
+    :param m: (str) name of the model (e.g. "graphSAGE")
+    :param folder: (str) determines the which dataset should be used
+    :param fold: (int) determines the data split
+    :param it: (int) indicates which run it is (multiruns)
+    :param device: (str) either "cpu" or "cuda"
+    :return: test accuracy, train- and val-accuracy and -loss, info about classification, number of TPTNFPFN
+    """
     if folder == "pT1_dataset/graphs/base-dataset/":
         num_input_features = 33
         folder_short = "base/"
@@ -161,11 +178,12 @@ def train_and_test_1Fold(m, folder, fold, it, device):
         num_input_features = 4
         folder_short = "paper/"
     batch_size = 64
-    # if not os.path.exists("Parameters/" + folder_short + m + "_fold" + str(fold) + ".pt"):
-    #     print("get hyperparams and train model")
+
+    # get the hyperparameters
     _, _, _, hidden , lr, lr_decay, num_epochs, num_layers, step_size, weight_decay = get_opt_param(m, folder, fold)
     bool=True
     while bool:
+        # train and validate
         val_res, bool, train_accs, val_accs, train_losses, val_losses, img_name_res = train_and_val_1Fold(batch_size,
                                                                                                           num_epochs,
                                                                                                           num_layers,
@@ -184,15 +202,12 @@ def train_and_test_1Fold(m, folder, fold, it, device):
             print("FOLD" + str(fold) + "rerun due to dead neurons")
     print("val acc:", val_res[1])
 
-    # load the data lists and split them into train, val, test and train-augmented
-    # all_lists = load_obj(folder, augment=10, sd=0.01)           ################################# choose which augmentation file
     all_lists = load_obj(folder, augment=0, sd=0)
     all_test_lists = all_lists[2]
     test_data_list = all_test_lists[fold]
     test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=True)
 
     model = torch.load("Parameters/" + folder_short + m + "_fold" + str(fold) + "it"+str(it)+".pt")
-    # crit = torch.nn.CrossEntropyLoss(reduction="sum")
     crit = torch.nn.NLLLoss()
     test_acc, test_loss, img_name, TP_TN_FP_FN = evaluate(model, test_loader, crit, device)
     print("test_acc:", test_acc)
@@ -216,7 +231,7 @@ def test(m, folder, runs, device):
     elif folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
         folder_short = "paper/"
 
-    path_test = "out/" + folder_short + m + "_test_data.csv"
+    path_test = "out/" + folder_short + m + "/" + m + "_test_data.csv"
 
     for fold in range(4):
         print("Fold:", fold)
@@ -287,20 +302,20 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
     """
     the data of the pt1 dataset is split into train val and test in 4 different ways
     this function trains and validates using the train and val split of one of these 4 possible splits
-    :param batch_size:
-    :param num_epochs:
-    :param num_layers:
-    :param num_input_features:
-    :param hidden:
-    :param device:
-    :param lr:
-    :param step_size:
-    :param lr_decay:
+    :param batch_size: (int)
+    :param num_epochs: (int) number of epochs
+    :param num_layers: (int) number of graph convolutional layers
+    :param num_input_features: (int) number of node features
+    :param hidden: (int) number of hidden representations per node
+    :param device: (str) either "cpu" or "cuda"
+    :param lr: learning rate
+    :param step_size: indicates after how many epochs the learning rate is decreased by a factor of lr_decay
+    :param lr_decay: factor by which the learning rate is decreased
     :param m: str, the model that should be trained
-    :param folder:
-    :param augment: boolean, determines wheter the dataset should be augmented or not
+    :param folder: which dataset to use (33 or 4 node features)
+    :param augment: boolean, determines whether the dataset should be augmented or not
     :param fold: int, determines which of the 4 possible splits is considered
-    :param opt:
+    :param opt: (bool), determine whether the function is called during the hyperparameter optimization or not
     :return:
     """
     if folder == "pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/":
@@ -308,8 +323,6 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
     if folder == "pT1_dataset/graphs/base-dataset/":
         folder_short = "base/"
 
-    #load the data lists and split them into train, val, test and train-augmented
-    # all_lists = load_obj(folder, augment=10, sd=0.01)           ################################# choose which augmentation file
     all_lists = load_obj(folder, augment=0, sd=0)
     all_train_lists = all_lists[0]
     all_val_lists = all_lists[1]
@@ -385,9 +398,8 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)  # define the optimizer, weight_decay corresponds to L2 regularization
     scheduler = StepLR(optimizer, step_size=step_size, gamma=lr_decay) # learning rate decay
 
-    # crit = torch.nn.CrossEntropyLoss(reduction="sum")
     crit = torch.nn.NLLLoss()
-    bad_epoch = 0
+
     # compute training and validation accuracy for every epoch
     for epoch in range(num_epochs):
 
@@ -421,18 +433,12 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
         running_val_acc[1] = running_val_acc[2]
         running_val_acc[2] = val_acc
 
-        # if len(val_accs) == 0:
-        #     preds_res = predictions
-        #     targets_res = labels
-        #     val_res = val_acc
 
         if np.mean(running_val_acc) > np.mean(val_res) and not testing:         # if this is current best save the list of predictions and corresponding labels
             img_name_res = img_name
             TP_TN_FP_FN_res = np.copy(TP_TN_FP_FN)
             val_res = np.copy(running_val_acc)
-        # print(running_val_acc)
-        # print(val_res)
-        # print()
+
         if running_val_acc[2] > val_res[2] and testing:  # if this is current best save the list of predictions and corresponding labels
             img_name_res = img_name
             TP_TN_FP_FN_res = np.copy(TP_TN_FP_FN)
@@ -441,16 +447,6 @@ def train_and_val_1Fold(batch_size, num_epochs, num_layers, weight_decay, num_in
 
         val_accs.append(val_acc)
         val_losses.append(val_loss)
-
-        # if opt and not testing:
-        #     if epoch % 1 == 0:
-        #         if val_acc<0.6:
-        #             bad_epoch +=1
-        #         #for param_group in optimizer.param_groups:
-        #             #print('Epoch: {:03d}, lr: {:.5f}, Train Loss: {:.5f}, Train Acc: {:.5f}, val Acc: {:.5f}'.format(epoch, param_group["lr"],loss, train_acc, val_acc))
-        #     if bad_epoch == 5:
-        #         #print("bad params, best val acc:", val_res)
-        #         return(val_res, True, np.asarray(train_accs), np.asarray(val_accs), np.asarray(losses), np.asarray(val_losses), None)     # the boolean tells that train_and_val was stopped early (bad parameter combination)
 
     if stdev(losses[-20:]) < 0.05 and mean(train_accs[-20:])<0.55:
         boolean = True
@@ -527,10 +523,10 @@ if __name__ == "__main__":
     # m = "GCNWithJK"
     # m = "GraphSAGE"
     # m = "GraphSAGEWithJK"
-    # m = "OwnGraphNN"
-    # m = "OwnGraphNN2"
-    # m = "GATNet"
-    # m = "NMP"
+    # m = "GIN"
+    # m = "GraphNN"     # corresponds to 1-GNN
+    # m = "GATNet"      # corresponds to GAT
+    # m = "NMP"         # corresponds to enn
 
     import argparse
     parser = argparse.ArgumentParser()
