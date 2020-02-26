@@ -8,12 +8,19 @@ The models are applied on the publicly available [pT1 Gland Graph Dataset (GG-pT
 So far, the following models are implemented:
 
 - **GCN**: uses the Graph convolution operator introduced by [Kipf & Welling 2016](https://arxiv.org/abs/1609.02907).
-    - **GCNWithJK**: uses the JumpingKnowledge layer aggregation module introduced by [Xu et al.](https://arxiv.org/abs/1806.03536)
+    - **GCNWithJK**: uses the JumpingKnowledge layer aggregation module introduced by [Xu et al. 2018](https://arxiv.org/abs/1806.03536)
 
-
-
-- **GraphSAGE**: uses the GraphSAGE operator introduced by [Hamilton et al.](https://arxiv.org/abs/1706.02216)
+- **GraphSAGE**: uses the GraphSAGE operator with mean-aggregator introduced by [Hamilton et al. 2017](https://arxiv.org/abs/1706.02216)
     - **GraphSAGEWithJK**: uses the JumpingKnowledge layer aggregation module introduced by [Xu et al.](https://arxiv.org/abs/1806.03536)
+
+- **GAT**: uses a attention-based message passing layer intorduced by [Velickovic et al. 2017](https://arxiv.org/abs/1710.10903)
+
+- **enn**: Edge Network from [Gilmer et al. 2017](https://arxiv.org/abs/1704.01212). It uses edge features to update the hidden representation of nodes.
+
+- **GIN**: Graph Isomorphism Network from [Xu et al. 2018](https://arxiv.org/abs/1810.00826) with epsilon=0.
+
+- **1-GNN**: one of the Graph Neural Network baselines used in [Morris et al. 2019](https://arxiv.org/abs/1810.02244)
+
 
 
 
@@ -59,31 +66,10 @@ This work is part of a larger project. Find out more [here](https://icosys.ch/bt
 
 
 ## Requirements:
-clone the repository using the terminal:
-```
-# first change to the local directory where you want to clone the repository to
-cd ...
-
-# clone the repo
-git clone https://github.com/waljan/GNNpT1.git
-```
-
-
-
-Before creating a virtual environment and installing all the packages, it might be necessary to remove the ~/.cache/pip directory
-```
-# remove the pip cache
-rm -r ~/.cache/pip/
-```
-
-
-
-create a virtual environment from the requirement.yml file:
+To use this repository you can create a virtual environment from the requirement.yml file:
 ```
 conda env create -f requirements.yml
-conda activate GNNpT1Env
 ```
-
 
 
 To remove the conda environment run the following code:
@@ -91,6 +77,6 @@ To remove the conda environment run the following code:
 # first deactivate the conda environment that you want to remove
 conda deactivate
 
-# remove the GNNpT1env environment
-conda env remove -n GNNpT1env
+# remove the GNNEnv environment
+conda env remove -n GNNEnv
 ```
