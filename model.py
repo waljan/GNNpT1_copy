@@ -408,11 +408,10 @@ class GIN(torch.nn.Module):
 
     def __init__(self, num_layers, num_input_features, hidden):
         super(GIN, self).__init__()
-        self.conv1 = GINConv(torch.nn.Sequential(Linear(num_input_features, hidden), torch.nn.ReLU(), Linear(hidden, hidden), torch.nn.ReLU()),
-                             num_input_features, hidden)
+        self.conv1 = GINConv(torch.nn.Sequential(Linear(num_input_features, hidden), torch.nn.ReLU(), Linear(hidden, hidden)))
         self.convs = torch.nn.ModuleList()
         for i in range(num_layers - 1):
-            self.convs.append(GINConv(torch.nn.Sequential(Linear(hidden, hidden), torch.nn.ReLU(), Linear(hidden, hidden), torch.nn.ReLU()),hidden, hidden))
+            self.convs.append(GINConv(torch.nn.Sequential(Linear(hidden, hidden), torch.nn.ReLU(), Linear(hidden, hidden))))
 
         self.lin1 = torch.nn.Linear(3*hidden, hidden)
         self.lin2 = torch.nn.Linear(hidden, 2)
