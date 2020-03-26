@@ -1,0 +1,2 @@
+dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size,weight_decay,val_acc
+pT1_dataset/graphs/base-dataset/,GIN,2,50,10,64,0.005119091775828014,0.6094454787359415,80,3,30.0,0.004639273348074146,0.9933333333333334

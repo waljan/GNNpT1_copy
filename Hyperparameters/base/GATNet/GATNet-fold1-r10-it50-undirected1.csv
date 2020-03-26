@@ -1,0 +1,2 @@
+dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size,weight_decay,val_acc
+pT1_dataset/graphs/base-dataset/,GATNet,1,50,10,64,0.004909355536817527,0.8556513223274066,80,3,20.0,0.008354717472428415,0.9892307692307692

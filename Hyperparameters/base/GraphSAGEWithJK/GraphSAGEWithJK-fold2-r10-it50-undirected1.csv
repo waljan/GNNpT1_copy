@@ -1,0 +1,2 @@
+dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size,weight_decay,val_acc
+pT1_dataset/graphs/base-dataset/,GraphSAGEWithJK,2,50,10,64,0.0014552538072827841,0.5872510864564499,80,3,30.0,0.0002968789960408903,0.9874358974358974
