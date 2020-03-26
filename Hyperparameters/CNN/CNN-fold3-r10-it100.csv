@@ -1,0 +1,2 @@
+model,fold,num_evals,num_runs_per_eval,lr,lr_decay,num_epochs,step_size,weight_decay,val_acc
+CNN,3,100,10,0.0006735407973467349,0.9967169827898505,40,6.0,0.003143847760061725,0.9584615384615385
