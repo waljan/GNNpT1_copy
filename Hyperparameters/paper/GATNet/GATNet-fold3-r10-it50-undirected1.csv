@@ -1,0 +1,2 @@
+dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size,weight_decay,val_acc
+pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/,GATNet,3,50,10,64,0.003426540409314498,0.7574380922587961,80,3,20.0,0.00012210264711421865,0.9682051282051282

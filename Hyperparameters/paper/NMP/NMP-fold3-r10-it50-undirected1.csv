@@ -1,0 +1,2 @@
+dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size,weight_decay,val_acc
+pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/,NMP,3,50,10,64,0.0044392608922887225,0.8909537084466955,80,3,10.0,0.0036426938004966002,0.9605128205128205
