@@ -102,9 +102,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--fold", type=int, required=True)
     parser.add_argument("--model", "-m", type=str, default="CNN")
-    parser.add_argument("--max_epochs", type=int, default=40)
+    parser.add_argument("--max_epochs", type=int, default=80)
     parser.add_argument("--runs", type=int, default=10)
-    parser.add_argument("--iterations", type=int, default=100)
+    parser.add_argument("--iterations", type=int, default=50)
     parser.add_argument("--device",  type=str, default="cuda")
     args = parser.parse_args()
 
@@ -112,8 +112,8 @@ if __name__ == "__main__":
     # search space
     search_space = {
         "weight_decay": hp.loguniform("weight_decay", np.log(0.0001), np.log(0.01)),
-        "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.1)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
-        "step_size": pyll.scope.int(hp.quniform("step_size", 3, 7, 3)),             # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q
+        "lr": hp.loguniform("lr", np.log(0.0001), np.log(0.01)),                     # hp.loguniform(label, low, high) returns a value drawn according to exp(uniform(low, high)) so that the logarithm of the return value is uniformly distributed
+        "step_size": pyll.scope.int(hp.quniform("step_size", 10, 31, 10)),             # hp.quniform(label, low, high, q) returns a value like round(uniform(low, high)/q)*q
         "lr_decay": hp.uniform("lr_decay", 0.5, 1),                                 # hp.uniform(label, low, high) return a value uniformly between low and high
                                                                                     # pyll.scope.int() converts the float output of hp.quiniform into an integer
     }
