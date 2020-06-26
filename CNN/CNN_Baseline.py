@@ -101,7 +101,7 @@ def plot_all_images():
 
 ############################################################################################
 
-def get_opt_param(fold):
+def get_opt_param(m, fold):
     """
     reads a csv file to  return the optimal parameters for a given data-split
     """
@@ -110,7 +110,7 @@ def get_opt_param(fold):
     path = "Hyperparameters/CNN/"
     for f in os.listdir(path):
         if not f.startswith("."):
-            if os.path.isfile(path + f) and k in f and f.endswith("it100.csv"):
+            if os.path.isfile(path + f) and k in f and f.endswith("it50.csv") and f.startswith(m): #TODO: add VGG16_bn
                 with open(path + f, "r") as file:
                     hp = list(csv.reader(file))
                     hp=hp[1]
@@ -239,7 +239,7 @@ class CNN(nn.Module):
 
 def train_and_test_1Fold(fold, m, device):
     # get the hyperparameters
-    _, _, lr, lr_decay, num_epochs, step_size, weight_decay = get_opt_param(fold)
+    _, _, lr, lr_decay, num_epochs, step_size, weight_decay = get_opt_param(m,fold)
     bool=True
     while bool:
         # train and validate the CNN, save the model weights that have highest accuracy on validation set
@@ -362,7 +362,15 @@ def train_and_val_1Fold(fold, m, num_epochs, lr, lr_decay, step_size, weight_dec
     img_size = 128
     # img_size = 256
     train_IDs, val_IDs, test_IDs = train_val_test_split(fold)
-    train_transform = transforms.Compose([transforms.Resize((img_size,img_size)),
+    if "aug" in m:
+        print("Augment training data")
+        train_transform = transforms.Compose([transforms.Resize((img_size,img_size)),
+                                    # transforms.RandomHorizontalFlip(),
+                                    transforms.RandomRotation((0,360)),
+                                    # transforms.RandomVerticalFlip(),
+                                    transforms.ToTensor()])
+    else:
+        train_transform = transforms.Compose([transforms.Resize((img_size,img_size)),
                                     # transforms.RandomHorizontalFlip(),
                                     # transforms.RandomRotation((0,360)),
                                     # transforms.RandomVerticalFlip(),
@@ -392,6 +400,13 @@ def train_and_val_1Fold(fold, m, num_epochs, lr, lr_decay, step_size, weight_dec
         model = CNN(img_size).to(device)
     elif m == "VGG16_bn":
         model = vgg16_bn().to(device)
+    elif m == "VGG16_bn_aug":
+        model = vgg16_bn().to(device)
+    elif m == "VGG16_bn_aug_pretrained":
+        model = vgg16_bn(pretrained=True).to(device)
+    elif m == "VGG16_bn_pretrained":
+        model = vgg16_bn(pretrained=True).to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)  # define the optimizer, weight_decay corresponds to L2 regularization
     # optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.9)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=lr_decay)  # learning rate decay

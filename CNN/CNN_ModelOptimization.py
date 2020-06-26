@@ -82,7 +82,7 @@ def hyperopt(search_space, m, num_epochs, f, runs, iterations, device):
     # write final result to a file
     direc="CNN/"
     # path = "./out/" + direc + m + "/" + m + "-fold" + str(f) + "-r10-it100-" + strftime("%Y%m%d-%H%M%S") + ".csv"
-    path = "./Hyperparameters/" + direc + m +"-fold" + str(f) + "-r10-it100.csv"
+    path = "./Hyperparameters/" + direc + m +"-fold" + str(f) + "-r10-it50.csv"
     with open(path, "w") as file:
         fieldnames = ["model","fold", "num_evals", "num_runs_per_eval", "lr", "lr_decay",
                       "num_epochs", "step_size", "weight_decay", "val_acc"] # TODO: add val_acc to the function that reads this file
