@@ -18,7 +18,7 @@ So far, the following models are implemented:
 - **GraphSAGE**: uses the GraphSAGE operator with mean-aggregator introduced by [Hamilton et al. 2017](https://arxiv.org/abs/1706.02216)
     - **GraphSAGEWithJK**: uses the JumpingKnowledge layer aggregation module introduced by [Xu et al.](https://arxiv.org/abs/1806.03536)
 
-- **GAT**: uses a attention-based message passing layer intorduced by [Velickovic et al. 2017](https://arxiv.org/abs/1710. In this repo it is called GATNet.
+- **GAT**: uses a attention-based message passing layer intorduced by [Velickovic et al. 2017](https://arxiv.org/abs/1710.10903). In this repo it is called GATNet.
 
 - **enn**: Edge Network from [Gilmer et al. 2017](https://arxiv.org/abs/1704.01212). It uses edge features to update the hidden representation of nodes. In this repo it is called NMP.
 
