@@ -1,8 +1,11 @@
 # Graph Neural Networks for the pT1 Gland Graph Dataset
+This repo contains the medical dataset, different Graph Neural Network implementations, the python code, the classification results and the Hyperparameters used
+for the paper entitled as "Classification of Intestinal Gland Cell-Graphs using Graph Neural Networks" and submitted at the International Conference of Pattern Recognition (ICPR) January 2021.
+
 This repo contains different Graph Neural Network (GNN) implementations for Graph classification.
 The models are applied on the publicly available [pT1 Gland Graph Dataset (GG-pT1)](https://github.com/LindaSt/pT1-Gland-Graph-Dataset).
 
-
+The Hyperparameters are found [here](https://github.com/waljan/GNNpT1/tree/master/Hyperparameters).
 
 ## Models:
 So far, the following models are implemented:
