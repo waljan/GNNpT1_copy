@@ -5,6 +5,8 @@ for the paper entitled as "Classification of Intestinal Gland Cell-Graphs using 
 This repo contains different Graph Neural Network (GNN) implementations for Graph classification.
 The models are applied on the publicly available [pT1 Gland Graph Dataset (GG-pT1)](https://github.com/LindaSt/pT1-Gland-Graph-Dataset).
 
+(In this repo the term "paper" correspond to the 4 node feature set and the term "base" corresponds to the 33 node feature set used for the paper submitted at the ICPR)
+
 The Hyperparameters are found [here](https://github.com/waljan/GNNpT1/tree/master/Hyperparameters).
 
 ## Models:
