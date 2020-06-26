@@ -1,2 +1,0 @@
-dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size
-pT1_dataset/graphs/base-dataset/,GCNWithJK,1,100,10,99.0,0.0010475405109773366,0.910818454078441,30.0,3.0,6.0

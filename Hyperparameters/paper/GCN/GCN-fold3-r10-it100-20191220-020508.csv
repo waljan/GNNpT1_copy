@@ -1,2 +1,0 @@
-dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size
-pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/,GCN,3,100,10,99.0,0.0023845641644128133,0.9911327206827008,40.0,2.0,6.0

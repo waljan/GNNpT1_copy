@@ -1,2 +1,0 @@
-dataset,model,fold,num_evals,num_runs_per_eval,hidden,lr,lr_decay,num_epochs,num_layers,step_size
-pT1_dataset/graphs/paper-graphs/distance-based_10_13_14_35/,GraphSAGEWithJK,0,100,10,66.0,0.0011476513441631435,0.9181753888816532,40.0,6.0,6.0
