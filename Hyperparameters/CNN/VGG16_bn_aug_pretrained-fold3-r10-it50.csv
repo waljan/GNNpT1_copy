@@ -1,0 +1,2 @@
+model,fold,num_evals,num_runs_per_eval,lr,lr_decay,num_epochs,step_size,weight_decay,val_acc
+VGG16_bn_aug_pretrained,3,50,10,0.00022474172719820832,0.6349488942296976,80,10.0,0.0020631121962338215,1.0
